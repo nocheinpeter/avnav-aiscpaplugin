@@ -8,6 +8,7 @@ Build it<br>
 `./setVersion.sh && ./build.sh`
 
 Upload the zip at the AvNav Plugins tab.
+Then widget shall be added via Layouts->Edit Layout->On Map 
 
 # Example
 ![Graphical Closest Point of Approach display](doc/cpaexample1.png)
