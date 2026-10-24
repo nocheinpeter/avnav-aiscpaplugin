@@ -36,11 +36,16 @@ export default async (api) => {
             course: 'nav.gps.course',
             speed: 'nav.gps.speed'
         },
+        initFunction: function (canvas, props) {
+            this.CPAStrokeWidthCircle = 1;
+            this.CPAFillColor = 'yellow';
+            this.CPACircleRadius = 7;
+        },
         renderCanvas: function (canvas, props) {
-            console.log("AisCpaWidget::renderCanvas() props = ", props);
+            //console.log("AisCpaWidget::renderCanvas() props = ", props);
             // quit if no data
             if (!props.position || !props.position.lat || !props.position.lon) {
-                console.log("AisCpaWidget::renderCanvas() no own position", props);
+                //console.log("AisCpaWidget::renderCanvas() no own position", props);
                 return;
             }
 
@@ -57,13 +62,13 @@ export default async (api) => {
             ctx.save();
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            console.log("AisCpaWidget::renderCanvas() aisUpdateCount = ", props.aisUpdateCount);
+            //console.log("AisCpaWidget::renderCanvas() aisUpdateCount = ", props.aisUpdateCount);
 
             for (const aisidx in props.aisList) {
                 const ais = props.aisList[aisidx];
                 if (ais.warning) {
                     console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + ais.mmsi + ", name " + ais.received.shipname);
-                    console.log("AisCpaWidget::renderCanvas() ais = ", ais);
+                    //console.log("AisCpaWidget::renderCanvas() ais = ", ais);
 
                     var targetSpeed = ais.received.speed;
                     if (!targetSpeed) {
@@ -79,65 +84,76 @@ export default async (api) => {
                         targetData = ais.estimated;
                     }
 
-                    let LatLon = api.LatLon();
-                    let aP1 = new LatLon(targetData.lat, targetData.lon);
-                    let aP2 = aP1.destinationPoint(targetSpeed * ais.cpadata.tcpa, targetCourse);
-                    var aTargetXY = this.lonLatToPixel(aP1.lon, aP1.lat);
-                    var aTargetCPAXY = this.lonLatToPixel(aP2.lon, aP2.lat);
-                    var aTargetCPAX = aTargetCPAXY[0];
-                    var aTargetCPAY = aTargetCPAXY[1];
-
-                    let aP3 = new LatLon(props.position.lat, props.position.lon);
-                    let aP4 = aP3.destinationPoint(speed * ais.cpadata.tcpa, course);
-                    var aOwnXY = this.lonLatToPixel(aP3.lon, aP3.lat);
-                    var aOwnCPAXY = this.lonLatToPixel(aP4.lon, aP4.lat);
-                    var aOwnCPAX = aOwnCPAXY[0];
-                    var aOwnCPAY = aOwnCPAXY[1];
-
-
-                    // draw CPA connection
-                    ctx.beginPath();
-                    ctx.strokeStyle = 'red';
-                    ctx.setLineDash([2, 2]);
-                    ctx.lineWidth = 3;
-
-                    ctx.moveTo(aOwnCPAX, aOwnCPAY);
-                    ctx.lineTo(aTargetCPAX, aTargetCPAY);
-                    ctx.stroke();
-
-                    ctx.beginPath();
-                    ctx.lineWidth = 1;
-                    ctx.moveTo(aOwnCPAX, aOwnCPAY);
-                    ctx.lineTo(aOwnXY[0], aOwnXY[1]);
-                    ctx.stroke();
-
-                    ctx.beginPath();
-                    ctx.moveTo(aTargetCPAX, aTargetCPAY);
-                    ctx.lineTo(aTargetXY[0], aTargetXY[1]);
-                    ctx.stroke();
-
-                    // draw circles for positions at TCPA
-                    ctx.lineWidth = 3;
-                    ctx.strokeStyle = "black";
-                    ctx.setLineDash([]);
-                    ctx.fillStyle = 'yellow';
-                    ctx.beginPath();
-                    ctx.arc(aOwnCPAX, aOwnCPAY, 7, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    ctx.beginPath();
-                    ctx.arc(aTargetCPAX, aTargetCPAY, 7, 0, 2 * Math.PI);
-                    ctx.fill();
-                    ctx.stroke();
+                    drawCPA(this, ctx, props.position, speed, course, targetData, targetSpeed, targetCourse, ais.cpadata.tcpa);
                 }
             }
 
             ctx.restore();
-            console.log("AisCpaWidget::renderCanvas() fini");
+            //console.log("AisCpaWidget::renderCanvas() fini");
         }
     }
 
+    function drawCPA(self, ctx, ownPos, ownSpeed, ownCourse, targetPos, targetSpeed, targetCourse, tcpa) {
+/*         console.log("AisCpaWidget::drawCPA() ownPos = ", ownPos, " ownSpeed = ", ownSpeed, " ownCourse = ", ownCourse);
+        console.log("AisCpaWidget::drawCPA() targetPos = ", targetPos, " targetSpeed = ", targetSpeed, " targetCourse = ", targetCourse);
+        console.log("AisCpaWidget::drawCPA() tcpa = ", tcpa);
+ */
+        let LatLon = api.LatLon();
+        let aP1 = new LatLon(targetPos.lat, targetPos.lon);
+        let aP2 = aP1.destinationPoint(targetSpeed * tcpa, targetCourse);
+        var aTargetXY = self.lonLatToPixel(aP1.lon, aP1.lat);
+        var aTargetCPAXY = self.lonLatToPixel(aP2.lon, aP2.lat);
+        
+        let aP3 = new LatLon(ownPos.lat, ownPos.lon);
+        let aP4 = aP3.destinationPoint(ownSpeed * tcpa, ownCourse);
+        var aOwnXY = self.lonLatToPixel(aP3.lon, aP3.lat);
+        var aOwnCPAXY = self.lonLatToPixel(aP4.lon, aP4.lat);
+
+        // draw CPA connection
+        ctx.beginPath();
+        ctx.strokeStyle = self.CPAFillColor;
+        ctx.lineWidth = 4;
+        ctx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
+        ctx.lineTo(aTargetCPAXY[0], aTargetCPAXY[1]);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.strokeStyle = 'red';
+        ctx.setLineDash([10, 6]);
+        ctx.lineWidth = 4;
+        ctx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
+        ctx.lineTo(aTargetCPAXY[0], aTargetCPAXY[1]);
+        ctx.stroke();
+
+        // draw lines from current positions to positions at TCPA
+        ctx.beginPath();
+        ctx.lineWidth = 1;
+        ctx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
+        ctx.lineTo(aOwnXY[0], aOwnXY[1]);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(aTargetCPAXY[0], aTargetCPAXY[1]);
+        ctx.lineTo(aTargetXY[0], aTargetXY[1]);
+        ctx.stroke();
+
+        // draw circles for positions at TCPA
+        ctx.lineWidth = self.CPAStrokeWidthCircle;
+        ctx.strokeStyle = "black";
+        ctx.setLineDash([]);
+        ctx.fillStyle = self.CPAFillColor;
+        ctx.beginPath();
+        ctx.arc(aOwnCPAXY[0], aOwnCPAXY[1], self.CPACircleRadius, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+
+        if (targetSpeed > 0.0) {
+            ctx.beginPath();
+            ctx.arc(aTargetCPAXY[0], aTargetCPAXY[1], self.CPACircleRadius, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
 
     api.registerWidget(AisCpaWidget);
 
