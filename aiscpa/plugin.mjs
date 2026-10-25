@@ -24,7 +24,43 @@
 export default async (api) => {
 
     // AVNAV: draws AIS CPA line on map display widget
+    var AisCpaParameter = {
+        CircleRadius: {
+            type: "NUMBER",
+            default: 7,
+            description: "Radius of the circles at own and target CPA positions"
+        },
+        FillColor: {
+            type: "COLOR",
+            default: "yellow",
+            description: "Fill color of the circles at own and target CPA positions"
+        },
+        LineColor: {
+            type: "COLOR",
+            default: "red",
+            description: "Color of the dashed line between own and target CPA positions"
+        },
+        StrokeWidthCircle: {
+            type: "NUMBER",
+            default: 1,
+            description: "Width of the stroke for the circles at own and target CPA positions"
+        },
+        StrokeColorCircle: {
+            type: "COLOR",
+            default: "black",
+            description: "Color of the stroke for the circles at own and target CPA positions"
+        }
+    };
+
     var AisCpaWidget = {
+        // Editable Parameters
+        CircleRadius: 7,
+        FillColor: 'yellow',
+        LineColor: 'red',
+        LineWidth: 4,
+        StrokeWidthCircle: 1,
+        StrokeColorCircle: 'black',
+
         name: "AisCpaWidget",
         type: "map",
         // Fordere einfach alles an, was dich interessiert
@@ -37,9 +73,12 @@ export default async (api) => {
             speed: 'nav.gps.speed'
         },
         initFunction: function (canvas, props) {
-            this.CPAStrokeWidthCircle = 1;
-            this.CPAFillColor = 'yellow';
-            this.CPACircleRadius = 7;
+            this.CPAStrokeWidthCircle = props.StrokeWidthCircle;
+            this.CPAFillColor = props.FillColor;
+            this.CPACircleRadius = props.CircleRadius;
+            this.CPALineColor = props.LineColor;
+            this.CPALineWidth = props.LineWidth;
+            this.CPAStrokeColorCircle = props.StrokeColorCircle;
         },
         renderCanvas: function (canvas, props) {
             //console.log("AisCpaWidget::renderCanvas() props = ", props);
@@ -94,16 +133,16 @@ export default async (api) => {
     }
 
     function drawCPA(self, ctx, ownPos, ownSpeed, ownCourse, targetPos, targetSpeed, targetCourse, tcpa) {
-/*         console.log("AisCpaWidget::drawCPA() ownPos = ", ownPos, " ownSpeed = ", ownSpeed, " ownCourse = ", ownCourse);
-        console.log("AisCpaWidget::drawCPA() targetPos = ", targetPos, " targetSpeed = ", targetSpeed, " targetCourse = ", targetCourse);
-        console.log("AisCpaWidget::drawCPA() tcpa = ", tcpa);
- */
+        /*         console.log("AisCpaWidget::drawCPA() ownPos = ", ownPos, " ownSpeed = ", ownSpeed, " ownCourse = ", ownCourse);
+                console.log("AisCpaWidget::drawCPA() targetPos = ", targetPos, " targetSpeed = ", targetSpeed, " targetCourse = ", targetCourse);
+                console.log("AisCpaWidget::drawCPA() tcpa = ", tcpa);
+         */
         let LatLon = api.LatLon();
         let aP1 = new LatLon(targetPos.lat, targetPos.lon);
         let aP2 = aP1.destinationPoint(targetSpeed * tcpa, targetCourse);
         var aTargetXY = self.lonLatToPixel(aP1.lon, aP1.lat);
         var aTargetCPAXY = self.lonLatToPixel(aP2.lon, aP2.lat);
-        
+
         let aP3 = new LatLon(ownPos.lat, ownPos.lon);
         let aP4 = aP3.destinationPoint(ownSpeed * tcpa, ownCourse);
         var aOwnXY = self.lonLatToPixel(aP3.lon, aP3.lat);
@@ -112,21 +151,22 @@ export default async (api) => {
         // draw CPA connection
         ctx.beginPath();
         ctx.strokeStyle = self.CPAFillColor;
-        ctx.lineWidth = 4;
+        ctx.lineWidth = self.CPALineWidth;
         ctx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
         ctx.lineTo(aTargetCPAXY[0], aTargetCPAXY[1]);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.strokeStyle = 'red';
+        ctx.strokeStyle = self.CPALineColor;
         ctx.setLineDash([10, 6]);
-        ctx.lineWidth = 4;
+        ctx.lineWidth = self.CPALineWidth;
         ctx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
         ctx.lineTo(aTargetCPAXY[0], aTargetCPAXY[1]);
         ctx.stroke();
 
         // draw lines from current positions to positions at TCPA
         ctx.beginPath();
+        ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
         ctx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
         ctx.lineTo(aOwnXY[0], aOwnXY[1]);
@@ -139,7 +179,7 @@ export default async (api) => {
 
         // draw circles for positions at TCPA
         ctx.lineWidth = self.CPAStrokeWidthCircle;
-        ctx.strokeStyle = "black";
+        ctx.strokeStyle = self.CPAStrokeColorCircle;
         ctx.setLineDash([]);
         ctx.fillStyle = self.CPAFillColor;
         ctx.beginPath();
@@ -155,7 +195,7 @@ export default async (api) => {
         }
     }
 
-    api.registerWidget(AisCpaWidget);
+    api.registerWidget(AisCpaWidget, AisCpaParameter);
 
     console.log("aiscpa plugin.mjs loaded")
     console.log("name", api.getPluginName());
