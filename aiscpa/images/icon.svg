@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50" fill="none">
-  <g transform="translate(25, 25) rotate(45) scale(0.75) translate(-25, -25)">
+  <g transform="translate(25, 25) rotate(30) scale(0.75) translate(-25, -25)">
     <!-- Dünner Kursvektor -->
-    <line x1="25" y1="15" x2="25" y2="0" stroke="black" stroke-width="1"/>
+    <line x1="25" y1="15" x2="25" y2="-5" stroke="black" stroke-width="3"/>
     
     <!-- Kleiner Kreis am Ende des Vektors -->
-    <circle cx="25" cy="0" r="2.5" fill="red" />
+    <circle cx="25" cy="-7" r="5" fill="red" />
     
     <!-- Dreieckiges Schiffssymbol -->
-    <polygon points="25,12 38,42 12,42" fill="black" />
+    <polygon points="25,12 38,49 12,49" fill="black" />
   </g>
 </svg>
