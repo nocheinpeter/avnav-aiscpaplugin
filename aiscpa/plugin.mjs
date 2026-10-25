@@ -25,6 +25,11 @@ export default async (api) => {
 
     // AVNAV: draws AIS CPA line on map display widget
     var AisCpaParameter = {
+        Opacity: {
+            type: "FLOAT",
+            default: 1.0,
+            description: "Opacity of the CPA line and circles"
+        },
         CircleRadius: {
             type: "NUMBER",
             default: 7,
@@ -54,6 +59,7 @@ export default async (api) => {
 
     var AisCpaWidget = {
         // Editable Parameters
+        Opacity: 1.0,
         CircleRadius: 7,
         FillColor: 'yellow',
         LineColor: 'red',
@@ -70,15 +76,19 @@ export default async (api) => {
             aisUpdateCount: 'nav.ais.updateCount',
             position: 'nav.gps.position',
             course: 'nav.gps.course',
-            speed: 'nav.gps.speed'
+            speed: 'nav.gps.speed',
+            navCircleColor: 'properties.navCircleColor'
+
         },
         initFunction: function (canvas, props) {
+            this.CPAOpacity = props.Opacity;
             this.CPAStrokeWidthCircle = props.StrokeWidthCircle;
             this.CPAFillColor = props.FillColor;
             this.CPACircleRadius = props.CircleRadius;
             this.CPALineColor = props.LineColor;
             this.CPALineWidth = props.LineWidth;
             this.CPAStrokeColorCircle = props.StrokeColorCircle;
+            this.CPACourseColor = props.navCircleColor;
         },
         renderCanvas: function (canvas, props) {
             //console.log("AisCpaWidget::renderCanvas() props = ", props);
@@ -149,6 +159,7 @@ export default async (api) => {
         var aOwnCPAXY = self.lonLatToPixel(aP4.lon, aP4.lat);
 
         // draw CPA connection
+        ctx.globalAlpha = self.CPAOpacity;
         ctx.beginPath();
         ctx.strokeStyle = self.CPAFillColor;
         ctx.lineWidth = self.CPALineWidth;
@@ -166,7 +177,8 @@ export default async (api) => {
 
         // draw lines from current positions to positions at TCPA
         ctx.beginPath();
-        ctx.strokeStyle = 'red';
+        ctx.strokeStyle = self.CPACourseColor;
+        //ctx.setLineDash([1, 1]);
         ctx.lineWidth = 1;
         ctx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
         ctx.lineTo(aOwnXY[0], aOwnXY[1]);
