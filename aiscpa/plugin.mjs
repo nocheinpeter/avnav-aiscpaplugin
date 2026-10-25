@@ -57,6 +57,11 @@ export default async (api) => {
             type: "COLOR",
             default: "black",
             description: "Color of the stroke for the circles at own and target CPA positions"
+        },
+        DrawRealSize: {
+            type: "BOOLEAN",
+            default: true,
+            description: "draw targets in real world size"
         }
     };
 
@@ -69,6 +74,7 @@ export default async (api) => {
         LineWidth: 4,
         StrokeWidthCircle: 1,
         StrokeColorCircle: 'black',
+        DrawRealSize : true,
 
         name: "AisCpaWidget",
         type: "map",
@@ -92,6 +98,7 @@ export default async (api) => {
             this.CPALineWidth = props.LineWidth;
             this.CPAStrokeColorCircle = props.StrokeColorCircle;
             this.CPACourseColor = props.navCircleColor;
+            this.CPADrawRealSize = props.DrawRealSize;
         },
         renderCanvas: function (canvas, props) {
             //console.log("AisCpaWidget::renderCanvas() props = ", props);
@@ -127,7 +134,7 @@ export default async (api) => {
                 const ais = props.aisList[aisidx];
                 if (ais.warning) {
                     //console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + ais.mmsi + ", name " + ais.received.shipname);
-                    //console.log("AisCpaWidget::renderCanvas() ais = ", ais);
+                    console.log("AisCpaWidget::renderCanvas() ais = ", ais);
 
                     var targetSpeed = ais.received.speed;
                     if (!targetSpeed) {
@@ -143,7 +150,7 @@ export default async (api) => {
                         targetData = ais.estimated;
                     }
 
-                    drawCPA(this, ctx, props.position, speed, course, targetData, targetSpeed, targetCourse, ais.cpadata.tcpa);
+                    drawCPA(this, ctx, props.position, speed, course, targetData, targetSpeed, targetCourse, ais.cpadata.tcpa, ais.received.length, ais.received.beam, ais.received.heading);
                 }
             }
 
@@ -152,10 +159,10 @@ export default async (api) => {
         }
     }
 
-    function drawCPA(self, ctx, ownPos, ownSpeed, ownCourse, targetPos, targetSpeed, targetCourse, tcpa) {
+    function drawCPA(self, ctx, ownPos, ownSpeed, ownCourse, targetPos, targetSpeed, targetCourse, tcpa, targetLength, targetWidth, targetHeading) {
         /*         console.log("AisCpaWidget::drawCPA() ownPos = ", ownPos, " ownSpeed = ", ownSpeed, " ownCourse = ", ownCourse);
                 console.log("AisCpaWidget::drawCPA() targetPos = ", targetPos, " targetSpeed = ", targetSpeed, " targetCourse = ", targetCourse);
-                console.log("AisCpaWidget::drawCPA() tcpa = ", tcpa);
+                console.log("AisCpaWidget::drawCPA() tcpa = ", tcpa);   
          */
         let LatLon = api.LatLon();
         let aP1 = new LatLon(targetPos.lat, targetPos.lon);
@@ -168,8 +175,37 @@ export default async (api) => {
         var aOwnXY = self.lonLatToPixel(aP3.lon, aP3.lat);
         var aOwnCPAXY = self.lonLatToPixel(aP4.lon, aP4.lat);
 
-        // draw CPA connection
+        if (self.CPADrawRealSize && targetLength && targetWidth) {
+            // draw real target size
+            if (!targetHeading) {
+                targetHeading = targetCourse;
+            }
+            let aT1 = aP1.destinationPoint(targetWidth / 2, targetHeading - 90.0);
+            let aT2 = aT1.destinationPoint(targetLength / 2, targetHeading);
+            let aT3 = aT2.destinationPoint(targetWidth, targetHeading + 90.0);
+            let aT4 = aT3.destinationPoint(targetLength, targetHeading + 180.0);
+            let aT5 = aT4.destinationPoint(targetWidth, targetHeading - 90.0);
+            var aTargetRectXY = [
+                self.lonLatToPixel(aT2.lon, aT2.lat),
+                self.lonLatToPixel(aT3.lon, aT3.lat),
+                self.lonLatToPixel(aT4.lon, aT4.lat),
+                self.lonLatToPixel(aT5.lon, aT5.lat)
+            ];
+            ctx.beginPath();
+            ctx.strokeStyle = '#606060';
+            ctx.fillStyle = '#ff000020';
+            ctx.lineWidth = 1;
+            ctx.moveTo(aTargetRectXY[0][0], aTargetRectXY[0][1]);
+            ctx.lineTo(aTargetRectXY[1][0], aTargetRectXY[1][1]);
+            ctx.lineTo(aTargetRectXY[2][0], aTargetRectXY[2][1]);
+            ctx.lineTo(aTargetRectXY[3][0], aTargetRectXY[3][1]);
+            ctx.closePath();
+            ctx.stroke();
+            ctx.fill(); 
+        }
+
         ctx.globalAlpha = self.CPAOpacity;
+        // draw CPA connection
         ctx.beginPath();
         ctx.strokeStyle = self.CPAFillColor;
         ctx.lineWidth = self.CPALineWidth;
