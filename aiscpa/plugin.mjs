@@ -23,6 +23,9 @@
 
 export default async (api) => {
 
+    const STOREKEYAISCPA = api.getStoreBaseKey() + ".AisCpa";
+    api.setStoreData(STOREKEYAISCPA, true); // CPAs ares visible by default
+
     // AVNAV: draws AIS CPA line on map display widget
     var AisCpaParameter = {
         Opacity: {
@@ -92,6 +95,13 @@ export default async (api) => {
         },
         renderCanvas: function (canvas, props) {
             //console.log("AisCpaWidget::renderCanvas() props = ", props);
+
+            let isVisible = api.getStoreData(STOREKEYAISCPA);
+            if (!isVisible) {
+                //console.log("AisCpaWidget::renderCanvas() not visible");
+                return;
+            }
+
             // quit if no data
             if (!props.position || !props.position.lat || !props.position.lon) {
                 //console.log("AisCpaWidget::renderCanvas() no own position", props);
@@ -116,7 +126,7 @@ export default async (api) => {
             for (const aisidx in props.aisList) {
                 const ais = props.aisList[aisidx];
                 if (ais.warning) {
-                    console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + ais.mmsi + ", name " + ais.received.shipname);
+                    //console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + ais.mmsi + ", name " + ais.received.shipname);
                     //console.log("AisCpaWidget::renderCanvas() ais = ", ais);
 
                     var targetSpeed = ais.received.speed;
@@ -208,6 +218,25 @@ export default async (api) => {
     }
 
     api.registerWidget(AisCpaWidget, AisCpaParameter);
+    console.log("aiscpa plugin.mjs registerWidget(AisCpaWidget, AisCpaParameter) done");
+    
+    api.registerUserButton({
+        name: 'AisCpaButton',
+        shortText: 'AIS CPA',
+        longText: 'Show/Hide AIS CPA drawings',
+        icon: 'images/icon.svg',
+        toggle : true,
+        storeKeys: {
+            toggle: STOREKEYAISCPA
+        },
+        onClick: (ev) => {
+            //console.log("AisCpaWidget::onClick() ev = ", ev);
+            let toggle = !api.getStoreData(STOREKEYAISCPA);
+            api.setStoreData(STOREKEYAISCPA, toggle);
+            //console.log("AisCpaWidget::onClick() toggle = ", toggle);
+        }
+    }, 'navpage');
+    console.log("aiscpa plugin.mjs registerUserButton(AisCpaWidget, AisCpaParameter) done");    
 
     console.log("aiscpa plugin.mjs loaded")
     console.log("name", api.getPluginName());

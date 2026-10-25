@@ -16,7 +16,17 @@ At AvNav *Display Setting->AIS* disable *curved vectors* and set *relative motio
 ## Configuration
 <img src="doc/cpaconfig.png" width="600">
 
-## Example
+## Examples
 ![Graphical Closest Point of Approach display](doc/cpaexample1.png)
 
 ![Graphical Closest Point of Approach display](doc/cpaexample2.png)
+
+## Disabling AIS CPA drawings
+
+If it's too much you can disable the CPA drawings:
+
+![Graphical Closest Point of Approach display](doc/cpaexample3.png)
+
+To disable push the *AIS CPA* button on the right side
+
+![Graphical Closest Point of Approach display](doc/cpaexample4.png)
