@@ -7,7 +7,7 @@ Based on [AvNav Testplugin](https://github.com/wellenvogel/avnav-testplugin/tree
 Build it<br>
 `./setVersion.sh && ./build.sh`
 
-Upload the zip at the AvNav Plugins tab.
+Upload the release zip file at the AvNav Plugins tab.
 
 Then widget can be added via *Layouts->Edit Layout->On Map* by selecting *AisCpaWidget*
 
