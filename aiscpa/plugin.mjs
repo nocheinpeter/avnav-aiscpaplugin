@@ -186,23 +186,23 @@ export default async (api) => {
                 targetHeading = targetCourse;
             }
             // target shape with smaller bow
-            let aT1Port = aP1.destinationPoint(targetWidth / 2, targetHeading - 90.0);
-            let aT1Starboard = aP1.destinationPoint(targetWidth / 2, targetHeading + 90.0);
-            let aT1Port1 = aP1.destinationPoint(0.6 * targetWidth / 2, targetHeading - 90.0);
-            let aT1Starboard1 = aP1.destinationPoint(0.6 * targetWidth / 2, targetHeading + 90.0);
-            let aT2 = aT1Port.destinationPoint(0.9 * targetLength / 2, targetHeading);
-            let aT3 = aT1Port1.destinationPoint(targetLength / 2, targetHeading);
-            let aT4 = aT1Starboard1.destinationPoint(targetLength / 2, targetHeading);
-            let aT5 = aT1Starboard.destinationPoint(0.9 * targetLength / 2, targetHeading);
-            let aT6 = aT1Starboard.destinationPoint(targetLength / 2, targetHeading + 180.0);
-            let aT7 = aT6.destinationPoint(targetWidth, targetHeading - 90);
+            let aToPort = targetWidth / 2.0;  // TODO: get from AvNav AIS data
+            let aToStern = targetLength / 2.0;
+
+            let aStern = aP1.destinationPoint(aToStern, targetHeading + 180.0);
+            let aSternPort = aStern.destinationPoint(aToPort, targetHeading - 90.0);
+            let aSternMiddle = aSternPort.destinationPoint(targetWidth / 2.0, targetHeading + 90.0);
+            let aPort = aSternPort.destinationPoint(0.9 * targetLength, targetHeading);
+            let aBowMiddle = aSternMiddle.destinationPoint(targetLength, targetHeading);
+            let aStarboard = aPort.destinationPoint(targetWidth, targetHeading + 90.0);
+            let aSternStarboard = aSternPort.destinationPoint(targetWidth, targetHeading + 90.0);
+            
             var aTargetRectXY = [
-                self.lonLatToPixel(aT2.lon, aT2.lat),
-                self.lonLatToPixel(aT3.lon, aT3.lat),
-                self.lonLatToPixel(aT4.lon, aT4.lat),
-                self.lonLatToPixel(aT5.lon, aT5.lat),
-                self.lonLatToPixel(aT6.lon, aT6.lat),
-                self.lonLatToPixel(aT7.lon, aT7.lat)
+                self.lonLatToPixel(aSternPort.lon, aSternPort.lat),
+                self.lonLatToPixel(aPort.lon, aPort.lat),
+                self.lonLatToPixel(aBowMiddle.lon, aBowMiddle.lat),
+                self.lonLatToPixel(aStarboard.lon, aStarboard.lat),
+                self.lonLatToPixel(aSternStarboard.lon, aSternStarboard.lat)
             ];
             ctx.beginPath();
             ctx.strokeStyle = '#303030';
@@ -213,7 +213,6 @@ export default async (api) => {
             ctx.lineTo(aTargetRectXY[2][0], aTargetRectXY[2][1]);
             ctx.lineTo(aTargetRectXY[3][0], aTargetRectXY[3][1]);
             ctx.lineTo(aTargetRectXY[4][0], aTargetRectXY[4][1]);
-            ctx.lineTo(aTargetRectXY[5][0], aTargetRectXY[5][1]);
             ctx.closePath();
             ctx.stroke();
             ctx.fill(); 
