@@ -200,6 +200,7 @@ export default async (api) => {
                 self.lonLatToPixel(aStarboard.lon, aStarboard.lat),
                 self.lonLatToPixel(aSternStarboard.lon, aSternStarboard.lat)
             ];
+            ctx.globalAlpha = 1.0; // fixes transparency
             ctx.beginPath();
             ctx.strokeStyle = '#303030';
             ctx.fillStyle = '#ff000020';
