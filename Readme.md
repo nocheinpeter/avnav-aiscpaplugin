@@ -15,7 +15,9 @@ At AvNav *Display Setting->AIS* disable *curved vectors* and set *relative motio
 
 ## Actual Release
 
-From AvNav Beta https://www.wellenvogel.net//software/avnav/downloads/daily/20261106/ shows real ship size: https://github.com/nocheinpeter/avnav-aiscpaplugin/blob/main/releases/avnav-aiscpaplugin-20261107.zip
+https://github.com/nocheinpeter/avnav-aiscpaplugin/blob/main/releases/avnav-aiscpaplugin-20261107.zip
+- implemented https://github.com/nocheinpeter/avnav-aiscpaplugin/issues/3
+- from AvNav Beta https://www.wellenvogel.net//software/avnav/downloads/daily/20261106/ shows real ship size
 
 <img src="doc/realsizeexample.png" width="600">
 
