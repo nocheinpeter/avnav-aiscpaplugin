@@ -38,3 +38,7 @@ If it's too much you can disable the CPA drawings:
 To disable push the *AIS CPA* button on the right side
 
 ![Graphical Closest Point of Approach display](doc/cpaexample4.png)
+
+Displays real ship sizes:
+
+![Real size display](doc/realsizeexample2.png)
