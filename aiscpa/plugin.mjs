@@ -136,11 +136,11 @@ export default async (api) => {
 
             for (const aisidx in props.aisList) {
                 const ais = props.aisList[aisidx];
-                if (ais.warning) {
-                    //console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + ais.mmsi + ", name " + ais.received.shipname);
-                    //console.log("AisCpaWidget::renderCanvas() ais = ", ais);
+/*                 if (ais.warning) {
+                    console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + ais.mmsi + ", name " + ais.received.shipname + ", to_bow " + ais.received.to_bow);
+                    console.log("AisCpaWidget::renderCanvas() ais = ", ais);
                 }
-
+ */
                 var targetSpeed = ais.received.speed || 0.0;
                 var targetCourse = ais.received.course || 0.0;
 
@@ -150,7 +150,7 @@ export default async (api) => {
                 }
 
                 drawCPA(this, ctx, ais.warning, props.position, speed, course, targetData, targetSpeed, targetCourse, 
-                    ais.cpadata.tcpa, ais.received.length, ais.received.beam, ais.received.to_stern, ais.received.to_port, ais.received.heading);
+                    ais.cpadata.tcpa, ais.received.length, ais.received.beam, ais.received.to_bow, ais.received.to_port, ais.received.heading);
             }
 
             ctx.restore();
@@ -158,7 +158,7 @@ export default async (api) => {
         }
     }
 
-    function drawCPA(self, ctx, isWarning, ownPos, ownSpeed, ownCourse, targetPos, targetSpeed, targetCourse, tcpa, targetLength, targetWidth, targetToStern, targetToPort, targetHeading) {
+    function drawCPA(self, ctx, isWarning, ownPos, ownSpeed, ownCourse, targetPos, targetSpeed, targetCourse, tcpa, targetLength, targetWidth, targetToBow, targetToPort, targetHeading) {
         /*         console.log("AisCpaWidget::drawCPA() ownPos = ", ownPos, " ownSpeed = ", ownSpeed, " ownCourse = ", ownCourse);
                 console.log("AisCpaWidget::drawCPA() targetPos = ", targetPos, " targetSpeed = ", targetSpeed, " targetCourse = ", targetCourse);
                 console.log("
@@ -175,15 +175,19 @@ export default async (api) => {
         var aOwnXY = self.lonLatToPixel(aP3.lon, aP3.lat);
         var aOwnCPAXY = self.lonLatToPixel(aP4.lon, aP4.lat);
 
-        if (self.CPADrawRealSize && targetLength && targetWidth 
+        // Rec. ITU-R M.1371-4 3.3.3 Reference point for reported position and overall dimensions of ship
+        let isAntennaPosValid = (typeof targetToPort !== 'undefined') && (typeof targetToBow !== 'undefined') && (typeof targetLength !== 'undefined') && (typeof targetWidth !== 'undefined');
+        isAntennaPosValid = isAntennaPosValid && ((targetToPort > 0) || (targetToBow > 0));
+
+        if (self.CPADrawRealSize && isAntennaPosValid
           && aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= ctx.canvas.width && aTargetXY[1] <= ctx.canvas.height) {
             // draw real target size TODO: take zoom into account
             if (!targetHeading) {
                 targetHeading = targetCourse;
             }
             // target shape with smaller bow
-            let aToPort = targetToPort || targetWidth / 2.0;
-            let aToStern = targetToStern || targetLength / 2.0;
+            let aToPort = targetToPort;
+            let aToStern = targetLength - targetToBow;
 
             let aStern = aP1.destinationPoint(aToStern, targetHeading + 180.0);
             let aSternPort = aStern.destinationPoint(aToPort, targetHeading - 90.0);
