@@ -13,6 +13,12 @@ Then widget can be added via *Layouts->Edit Layout->On Map* by selecting *AisCpa
 
 At AvNav *Display Setting->AIS* disable *curved vectors* and set *relative motion vector range* to 0.
 
+## Actual Release
+
+From AvNav Beta https://www.wellenvogel.net//software/avnav/downloads/daily/20261106/ shows real ship size: https://github.com/nocheinpeter/avnav-aiscpaplugin/blob/main/releases/avnav-aiscpaplugin-20261107.zip
+
+<img src="doc/realsizeexample.png" width="600">
+
 ## Configuration
 <img src="doc/cpaconfig.png" width="600">
 
