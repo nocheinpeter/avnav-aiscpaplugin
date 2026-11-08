@@ -47,3 +47,7 @@ To disable push the *AIS CPA* button on the right side
 Displays real ship sizes:
 
 ![Real size display](doc/realsizeexample2.png)
+
+## FAQ
+
+[FAQ](faq.md)
