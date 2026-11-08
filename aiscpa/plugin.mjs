@@ -175,6 +175,7 @@ export default async (api) => {
 
         // Rec. ITU-R M.1371-4 3.3.3 Reference point for reported position and overall dimensions of ship
         let isAntennaPosValid = (typeof targetToPort !== 'undefined') && (typeof targetToBow !== 'undefined') && (typeof targetLength !== 'undefined') && (typeof targetWidth !== 'undefined');
+        isAntennaPosValid = isAntennaPosValid && (targetToPort !== null) && (targetToBow !== null) && (targetLength !== null) && (targetWidth !== null);
         isAntennaPosValid = isAntennaPosValid && ((targetToPort > 0) || (targetToBow > 0));
 
         if (self.CPADrawRealSize && isAntennaPosValid
