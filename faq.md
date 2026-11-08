@@ -19,3 +19,4 @@ Drawings may defer from realtiy due to
 - real size display is disabled at the plugin settings
 - ship dimension are not sent by AIS target
 - GPS antenna position is not sent by AIS target or unkown
+- needa minimum AvNav version 20261106
