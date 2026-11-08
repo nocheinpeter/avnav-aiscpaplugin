@@ -136,22 +136,27 @@ export default async (api) => {
 
             for (const aisidx in props.aisList) {
                 const ais = props.aisList[aisidx];
-/*                 if (ais.warning) {
-                    console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + ais.mmsi + ", name " + ais.received.shipname + ", to_bow " + ais.received.to_bow);
-                    console.log("AisCpaWidget::renderCanvas() ais = ", ais);
-                }
- */
-                var targetSpeed = ais.received.speed || 0.0;
-                var targetCourse = ais.received.course || 0.0;
+                try {
+                    
+                    //console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + ais.mmsi + ", name " + ais.received.shipname + ", to_bow " + ais.received.to_bow);
+                    //console.log("AisCpaWidget::renderCanvas() ais = ", ais);
 
-                var targetData = ais.received;
-                if (ais.estimated && ais.estimated.lat && ais.estimated.lon) {
-                    targetData = ais.estimated;
-                }
+                    var targetSpeed = ais.received.speed || 0.0;
+                    var targetCourse = ais.received.course || 0.0;
+                    var tcpa = ais.cpadata.tcpa || 0.0;
 
-                drawCPA(this, ctx, ais.warning, props.position, speed, course, targetData, targetSpeed, targetCourse, 
-                    ais.cpadata.tcpa, ais.received.length, ais.received.beam, ais.received.to_bow, ais.received.to_port, ais.received.heading);
-            }
+                    var targetData = ais.received;
+                    if (ais.estimated && ais.estimated.lat && ais.estimated.lon) {
+                        targetData = ais.estimated;
+                    }
+
+                    drawCPA(this, ctx, ais.warning, props.position, speed, course, targetData, targetSpeed, targetCourse,
+                        tcpa, ais.received.length, ais.received.beam, ais.received.to_bow, ais.received.to_port, ais.received.heading);
+                }
+                catch (e) {
+                    console.log("AisCpaWidget::renderCanvas() error while processing AIS data for mmsi " + ais.mmsi, e);
+                }
+            }   
 
             ctx.restore();
             //console.log("AisCpaWidget::renderCanvas() fini");
@@ -166,14 +171,7 @@ export default async (api) => {
          */
         let LatLon = api.LatLon();
         let aP1 = new LatLon(targetPos.lat, targetPos.lon);
-        let aP2 = aP1.destinationPoint(targetSpeed * tcpa, targetCourse);
         var aTargetXY = self.lonLatToPixel(aP1.lon, aP1.lat);
-        var aTargetCPAXY = self.lonLatToPixel(aP2.lon, aP2.lat);
-
-        let aP3 = new LatLon(ownPos.lat, ownPos.lon);
-        let aP4 = aP3.destinationPoint(ownSpeed * tcpa, ownCourse);
-        var aOwnXY = self.lonLatToPixel(aP3.lon, aP3.lat);
-        var aOwnCPAXY = self.lonLatToPixel(aP4.lon, aP4.lat);
 
         // Rec. ITU-R M.1371-4 3.3.3 Reference point for reported position and overall dimensions of ship
         let isAntennaPosValid = (typeof targetToPort !== 'undefined') && (typeof targetToBow !== 'undefined') && (typeof targetLength !== 'undefined') && (typeof targetWidth !== 'undefined');
@@ -220,6 +218,13 @@ export default async (api) => {
         }
 
         if (isWarning) {
+            let aP2 = aP1.destinationPoint(targetSpeed * tcpa, targetCourse);
+            var aTargetCPAXY = self.lonLatToPixel(aP2.lon, aP2.lat);
+            let aP3 = new LatLon(ownPos.lat, ownPos.lon);
+            let aP4 = aP3.destinationPoint(ownSpeed * tcpa, ownCourse);
+            var aOwnXY = self.lonLatToPixel(aP3.lon, aP3.lat);
+            var aOwnCPAXY = self.lonLatToPixel(aP4.lon, aP4.lat);
+
             ctx.globalAlpha = self.CPAOpacity;
             // draw CPA connection
             ctx.beginPath();
