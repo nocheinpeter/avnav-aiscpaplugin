@@ -86,6 +86,7 @@ export default async (api) => {
             position: 'nav.gps.position',
             course: 'nav.gps.course',
             speed: 'nav.gps.speed',
+            currentZoom: 'map.currentZoom',
             navCircleColor: 'properties.navCircleColor',
             aisLayerVisible: 'properties.layers.ais'
         },
@@ -102,8 +103,7 @@ export default async (api) => {
         },
         renderCanvas: function (canvas, props) {
             //console.log("AisCpaWidget::renderCanvas() props = ", props);
-            if (!props.aisLayerVisible) {
-                //console.log("AisCpaWidget::renderCanvas() AIS layer not visible");
+            if (!props.aisLayerVisible || props.currentZoom < 11) {
                 return;
             }
 
@@ -180,7 +180,7 @@ export default async (api) => {
 
         if (self.CPADrawRealSize && isAntennaPosValid
           && aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= ctx.canvas.width && aTargetXY[1] <= ctx.canvas.height) {
-            // draw real target size TODO: take zoom into account
+            // draw real target size
             if (!targetHeading) {
                 targetHeading = targetCourse;
             }
