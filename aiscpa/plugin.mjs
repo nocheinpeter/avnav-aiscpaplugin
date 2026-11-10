@@ -62,6 +62,11 @@ export default async (api) => {
             type: "BOOLEAN",
             default: true,
             description: "draw targets in real world size"
+        },
+        MinZoom: {
+            type: "FLOAT",
+            default: 11.0,
+            description: "Minimum zoom level to draw CPA and real size targets"
         }
     };
 
@@ -74,8 +79,8 @@ export default async (api) => {
         LineWidth: 4,
         StrokeWidthCircle: 1,
         StrokeColorCircle: 'black',
-        DrawRealSize : true,
-
+        DrawRealSize: true,
+        MinZoom: 11,
         name: "AisCpaWidget",
         type: "map",
         // Fordere einfach alles an, was dich interessiert
@@ -100,10 +105,11 @@ export default async (api) => {
             this.CPAStrokeColorCircle = props.StrokeColorCircle;
             this.CPACourseColor = props.navCircleColor;
             this.CPADrawRealSize = props.DrawRealSize;
+            this.CPAMinZoom = props.MinZoom;
         },
         renderCanvas: function (canvas, props) {
             //console.log("AisCpaWidget::renderCanvas() props = ", props);
-            if (!props.aisLayerVisible || props.currentZoom < 11) {
+            if (!props.aisLayerVisible || props.currentZoom < this.CPAMinZoom) {
                 return;
             }
 
@@ -137,7 +143,7 @@ export default async (api) => {
             for (const aisidx in props.aisList) {
                 const ais = props.aisList[aisidx];
                 try {
-                    
+
                     //console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + ais.mmsi + ", name " + ais.received.shipname + ", to_bow " + ais.received.to_bow);
                     //console.log("AisCpaWidget::renderCanvas() ais = ", ais);
 
@@ -156,7 +162,7 @@ export default async (api) => {
                 catch (e) {
                     console.log("AisCpaWidget::renderCanvas() error while processing AIS data for mmsi " + ais.mmsi, e);
                 }
-            }   
+            }
 
             ctx.restore();
             //console.log("AisCpaWidget::renderCanvas() fini");
@@ -179,7 +185,7 @@ export default async (api) => {
         isAntennaPosValid = isAntennaPosValid && ((targetToPort > 0) || (targetToBow > 0));
 
         if (self.CPADrawRealSize && isAntennaPosValid
-          && aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= ctx.canvas.width && aTargetXY[1] <= ctx.canvas.height) {
+            && aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= ctx.canvas.width && aTargetXY[1] <= ctx.canvas.height) {
             // draw real target size
             if (!targetHeading) {
                 targetHeading = targetCourse;
@@ -195,7 +201,7 @@ export default async (api) => {
             let aBowMiddle = aSternMiddle.destinationPoint(targetLength, targetHeading);
             let aStarboard = aPort.destinationPoint(targetWidth, targetHeading + 90.0);
             let aSternStarboard = aSternPort.destinationPoint(targetWidth, targetHeading + 90.0);
-            
+
             var aTargetRectXY = [
                 self.lonLatToPixel(aSternPort.lon, aSternPort.lat),
                 self.lonLatToPixel(aPort.lon, aPort.lat),
@@ -215,7 +221,7 @@ export default async (api) => {
             ctx.lineTo(aTargetRectXY[4][0], aTargetRectXY[4][1]);
             ctx.closePath();
             ctx.stroke();
-            ctx.fill(); 
+            ctx.fill();
         }
 
         if (isWarning) {
@@ -278,13 +284,13 @@ export default async (api) => {
 
     api.registerWidget(AisCpaWidget, AisCpaParameter);
     console.log("aiscpa plugin.mjs registerWidget(AisCpaWidget, AisCpaParameter) done");
-    
+
     api.registerUserButton({
         name: 'AisCpaButton',
         shortText: 'AIS CPA',
         longText: 'Show/Hide AIS CPA drawings',
         icon: 'images/icon.svg',
-        toggle : true,
+        toggle: true,
         storeKeys: {
             toggle: STOREKEYAISCPA
         },
@@ -295,7 +301,7 @@ export default async (api) => {
             //console.log("AisCpaWidget::onClick() toggle = ", toggle);
         }
     }, 'navpage');
-    console.log("aiscpa plugin.mjs registerUserButton(AisCpaWidget, AisCpaParameter) done");    
+    console.log("aiscpa plugin.mjs registerUserButton(AisCpaWidget, AisCpaParameter) done");
 
     console.log("aiscpa plugin.mjs loaded")
     console.log("name", api.getPluginName());
