@@ -169,7 +169,8 @@ export default async (api) => {
         }
     }
 
-    function drawCPA(self, ctx, isWarning, ownPos, ownSpeed, ownCourse, targetPos, targetSpeed, targetCourse, tcpa, targetLength, targetWidth, targetToBow, targetToPort, targetHeading) {
+    function drawCPA(self, ctx, isWarning, ownPos, ownSpeed, ownCourse, targetPos, targetSpeed, targetCourse, tcpa, targetLength, targetWidth, 
+        targetToBow, targetToPort, targetHeading) {
         /*         console.log("AisCpaWidget::drawCPA() ownPos = ", ownPos, " ownSpeed = ", ownSpeed, " ownCourse = ", ownCourse);
                 console.log("AisCpaWidget::drawCPA() targetPos = ", targetPos, " targetSpeed = ", targetSpeed, " targetCourse = ", targetCourse);
                 console.log("
@@ -180,12 +181,13 @@ export default async (api) => {
         var aTargetXY = self.lonLatToPixel(aP1.lon, aP1.lat);
 
         // Rec. ITU-R M.1371-4 3.3.3 Reference point for reported position and overall dimensions of ship
-        let isAntennaPosValid = (typeof targetToPort !== 'undefined') && (typeof targetToBow !== 'undefined') && (typeof targetLength !== 'undefined') && (typeof targetWidth !== 'undefined');
+        let isAntennaPosValid = (typeof targetToPort !== 'undefined') && (typeof targetToBow !== 'undefined') 
+          && (typeof targetLength !== 'undefined') && (typeof targetWidth !== 'undefined');
         isAntennaPosValid = isAntennaPosValid && (targetToPort !== null) && (targetToBow !== null) && (targetLength !== null) && (targetWidth !== null);
         isAntennaPosValid = isAntennaPosValid && ((targetToPort > 0) || (targetToBow > 0));
 
         if (self.CPADrawRealSize && isAntennaPosValid
-            && aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= ctx.canvas.width && aTargetXY[1] <= ctx.canvas.height) {
+          && aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= ctx.canvas.width && aTargetXY[1] <= ctx.canvas.height) {
             // draw real target size
             if (!targetHeading) {
                 targetHeading = targetCourse;
