@@ -136,7 +136,6 @@ export default async (fApi) => {
 
             var aCtx = fCanvas.getContext('2d');
             aCtx.save();
-            aCtx.clearRect(0, 0, fCanvas.width, fCanvas.height);
 
             //console.log("AisCpaWidget::renderCanvas() aisUpdateCount = ", fProps.aisUpdateCount);
 
