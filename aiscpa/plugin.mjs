@@ -21,10 +21,10 @@
  #
  */
 
-export default async (api) => {
+export default async (fApi) => {
 
-    const STOREKEYAISCPA = api.getStoreBaseKey() + ".AisCpa";
-    api.setStoreData(STOREKEYAISCPA, true); // CPAs ares visible by default
+    const STOREKEYAISCPA = fApi.getStoreBaseKey() + ".AisCpa";
+    fApi.setStoreData(STOREKEYAISCPA, true); // CPAs ares visible by default
 
     // AVNAV: draws AIS CPA line on map display widget
     var AisCpaParameter = {
@@ -95,207 +95,207 @@ export default async (api) => {
             navCircleColor: 'properties.navCircleColor',
             aisLayerVisible: 'properties.layers.ais'
         },
-        initFunction: function (canvas, props) {
-            this.CPAOpacity = props.Opacity;
-            this.CPAStrokeWidthCircle = props.StrokeWidthCircle;
-            this.CPAFillColor = props.FillColor;
-            this.CPACircleRadius = props.CircleRadius;
-            this.CPALineColor = props.LineColor;
-            this.CPALineWidth = props.LineWidth;
-            this.CPAStrokeColorCircle = props.StrokeColorCircle;
-            this.CPACourseColor = props.navCircleColor;
-            this.CPADrawRealSize = props.DrawRealSize;
-            this.CPAMinZoom = props.MinZoom;
+        initFunction: function (fCanvas, fProps) {
+            this.CPAOpacity = fProps.Opacity;
+            this.CPAStrokeWidthCircle = fProps.StrokeWidthCircle;
+            this.CPAFillColor = fProps.FillColor;
+            this.CPACircleRadius = fProps.CircleRadius;
+            this.CPALineColor = fProps.LineColor;
+            this.CPALineWidth = fProps.LineWidth;
+            this.CPAStrokeColorCircle = fProps.StrokeColorCircle;
+            this.CPACourseColor = fProps.navCircleColor;
+            this.CPADrawRealSize = fProps.DrawRealSize;
+            this.CPAMinZoom = fProps.MinZoom;
         },
-        renderCanvas: function (canvas, props) {
+        renderCanvas: function (fCanvas, fProps) {
             //console.log("AisCpaWidget::renderCanvas() props = ", props);
-            if (!props.aisLayerVisible || props.currentZoom < this.CPAMinZoom) {
+            if (!fProps.aisLayerVisible || fProps.currentZoom < this.CPAMinZoom) {
                 return;
             }
 
-            let isVisible = api.getStoreData(STOREKEYAISCPA);
-            if (!isVisible) {
+            let aIsVisible = fApi.getStoreData(STOREKEYAISCPA);
+            if (!aIsVisible) {
                 //console.log("AisCpaWidget::renderCanvas() not visible");
                 return;
             }
 
             // quit if no data
-            if (!props.position || !props.position.lat || !props.position.lon) {
+            if (!fProps.position || !fProps.position.lat || !fProps.position.lon) {
                 //console.log("AisCpaWidget::renderCanvas() no own position", props);
                 return;
             }
 
-            var speed = props.speed;
-            if (!speed) {
-                speed = 0.0;
+            var aSpeed = fProps.speed;
+            if (!aSpeed) {
+                aSpeed = 0.0;
             }
-            var course = props.course;
-            if (!course) {
-                course = 0.0;
+            var aCourse = fProps.course;
+            if (!aCourse) {
+                aCourse = 0.0;
             }
 
-            var ctx = canvas.getContext('2d');
-            ctx.save();
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            var aCtx = fCanvas.getContext('2d');
+            aCtx.save();
+            aCtx.clearRect(0, 0, fCanvas.width, fCanvas.height);
 
-            //console.log("AisCpaWidget::renderCanvas() aisUpdateCount = ", props.aisUpdateCount);
+            //console.log("AisCpaWidget::renderCanvas() aisUpdateCount = ", fProps.aisUpdateCount);
 
-            for (const aisidx in props.aisList) {
-                const ais = props.aisList[aisidx];
+            for (const aAisidx in fProps.aisList) {
+                const aAis = fProps.aisList[aAisidx];
                 try {
 
-                    //console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + ais.mmsi + ", name " + ais.received.shipname + ", to_bow " + ais.received.to_bow);
-                    //console.log("AisCpaWidget::renderCanvas() ais = ", ais);
+                    //console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + aAis.mmsi + ", name " + aAis.received.shipname + ", to_bow " + aAis.received.to_bow);
+                    //console.log("AisCpaWidget::renderCanvas() ais = ", aAis);
 
-                    var targetSpeed = ais.received.speed || 0.0;
-                    var targetCourse = ais.received.course || 0.0;
-                    var tcpa = ais.cpadata.tcpa || 0.0;
+                    var aTargetSpeed = aAis.received.speed || 0.0;
+                    var aTargetCourse = aAis.received.course || 0.0;
+                    var aTcpa = aAis.cpadata.tcpa || 0.0;
 
-                    var targetData = ais.received;
-                    if (ais.estimated && ais.estimated.lat && ais.estimated.lon) {
-                        targetData = ais.estimated;
+                    var aTargetData = aAis.received;
+                    if (aAis.estimated && aAis.estimated.lat && aAis.estimated.lon) {
+                        aTargetData = aAis.estimated;
                     }
 
-                    drawCPA(this, ctx, ais.warning, props.position, speed, course, targetData, targetSpeed, targetCourse,
-                        tcpa, ais.received.length, ais.received.beam, ais.received.to_bow, ais.received.to_port, ais.received.heading);
+                    drawCPA(this, aCtx, aAis.warning, fProps.position, aSpeed, aCourse, aTargetData, aTargetSpeed, aTargetCourse,
+                        aTcpa, aAis.received.length, aAis.received.beam, aAis.received.to_bow, aAis.received.to_port, aAis.received.heading);
                 }
-                catch (e) {
-                    console.log("AisCpaWidget::renderCanvas() error while processing AIS data for mmsi " + ais.mmsi, e);
+                catch (aE) {
+                    console.log("AisCpaWidget::renderCanvas() error while processing AIS data for mmsi " + aAis.mmsi, aE);
                 }
             }
 
-            ctx.restore();
+            aCtx.restore();
             //console.log("AisCpaWidget::renderCanvas() fini");
         }
     }
 
-    function drawCPA(self, ctx, isWarning, ownPos, ownSpeed, ownCourse, targetPos, targetSpeed, targetCourse, tcpa, targetLength, targetWidth, 
-        targetToBow, targetToPort, targetHeading) {
+    function drawCPA(fSelf, fCtx, fIsWarning, fOwnPos, fOwnSpeed, fOwnCourse, fTargetPos, fTargetSpeed, fTargetCourse, fTcpa, fTargetLength, fTargetWidth,
+        fTargetToBow, fTargetToPort, fTargetHeading) {
         /*         console.log("AisCpaWidget::drawCPA() ownPos = ", ownPos, " ownSpeed = ", ownSpeed, " ownCourse = ", ownCourse);
                 console.log("AisCpaWidget::drawCPA() targetPos = ", targetPos, " targetSpeed = ", targetSpeed, " targetCourse = ", targetCourse);
                 console.log("
                 AisCpaWidget::drawCPA() tcpa = ", tcpa);   
          */
-        let LatLon = api.LatLon();
-        let aP1 = new LatLon(targetPos.lat, targetPos.lon);
-        var aTargetXY = self.lonLatToPixel(aP1.lon, aP1.lat);
+        let aLatLon = fApi.LatLon();
+        let aP1 = new aLatLon(fTargetPos.lat, fTargetPos.lon);
+        var aTargetXY = fSelf.lonLatToPixel(aP1.lon, aP1.lat);
 
         // Rec. ITU-R M.1371-4 3.3.3 Reference point for reported position and overall dimensions of ship
-        let isAntennaPosValid = (typeof targetToPort !== 'undefined') && (typeof targetToBow !== 'undefined') 
-          && (typeof targetLength !== 'undefined') && (typeof targetWidth !== 'undefined');
-        isAntennaPosValid = isAntennaPosValid && (targetToPort !== null) && (targetToBow !== null) && (targetLength !== null) && (targetWidth !== null);
-        isAntennaPosValid = isAntennaPosValid && ((targetToPort > 0) || (targetToBow > 0));
+        let aIsAntennaPosValid = (typeof fTargetToPort !== 'undefined') && (typeof fTargetToBow !== 'undefined')
+          && (typeof fTargetLength !== 'undefined') && (typeof fTargetWidth !== 'undefined');
+        aIsAntennaPosValid = aIsAntennaPosValid && (fTargetToPort !== null) && (fTargetToBow !== null) && (fTargetLength !== null) && (fTargetWidth !== null);
+        aIsAntennaPosValid = aIsAntennaPosValid && ((fTargetToPort > 0) || (fTargetToBow > 0));
 
-        if (self.CPADrawRealSize && isAntennaPosValid
-          && aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= ctx.canvas.width && aTargetXY[1] <= ctx.canvas.height) {
+        if (fSelf.CPADrawRealSize && aIsAntennaPosValid
+          && aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= fCtx.canvas.width && aTargetXY[1] <= fCtx.canvas.height) {
             // draw real target size
-            if (!targetHeading) {
-                targetHeading = targetCourse;
+            if (!fTargetHeading) {
+                fTargetHeading = fTargetCourse;
             }
             // target shape with smaller bow
-            let aToPort = targetToPort;
-            let aToStern = targetLength - targetToBow;
+            let aToPort = fTargetToPort;
+            let aToStern = fTargetLength - fTargetToBow;
 
-            let aStern = aP1.destinationPoint(aToStern, targetHeading + 180.0);
-            let aSternPort = aStern.destinationPoint(aToPort, targetHeading - 90.0);
-            let aSternMiddle = aSternPort.destinationPoint(targetWidth / 2.0, targetHeading + 90.0);
-            let aPort = aSternPort.destinationPoint(0.9 * targetLength, targetHeading);
-            let aBowMiddle = aSternMiddle.destinationPoint(targetLength, targetHeading);
-            let aStarboard = aPort.destinationPoint(targetWidth, targetHeading + 90.0);
-            let aSternStarboard = aSternPort.destinationPoint(targetWidth, targetHeading + 90.0);
+            let aStern = aP1.destinationPoint(aToStern, fTargetHeading + 180.0);
+            let aSternPort = aStern.destinationPoint(aToPort, fTargetHeading - 90.0);
+            let aSternMiddle = aSternPort.destinationPoint(fTargetWidth / 2.0, fTargetHeading + 90.0);
+            let aPort = aSternPort.destinationPoint(0.9 * fTargetLength, fTargetHeading);
+            let aBowMiddle = aSternMiddle.destinationPoint(fTargetLength, fTargetHeading);
+            let aStarboard = aPort.destinationPoint(fTargetWidth, fTargetHeading + 90.0);
+            let aSternStarboard = aSternPort.destinationPoint(fTargetWidth, fTargetHeading + 90.0);
 
             var aTargetRectXY = [
-                self.lonLatToPixel(aSternPort.lon, aSternPort.lat),
-                self.lonLatToPixel(aPort.lon, aPort.lat),
-                self.lonLatToPixel(aBowMiddle.lon, aBowMiddle.lat),
-                self.lonLatToPixel(aStarboard.lon, aStarboard.lat),
-                self.lonLatToPixel(aSternStarboard.lon, aSternStarboard.lat)
+                fSelf.lonLatToPixel(aSternPort.lon, aSternPort.lat),
+                fSelf.lonLatToPixel(aPort.lon, aPort.lat),
+                fSelf.lonLatToPixel(aBowMiddle.lon, aBowMiddle.lat),
+                fSelf.lonLatToPixel(aStarboard.lon, aStarboard.lat),
+                fSelf.lonLatToPixel(aSternStarboard.lon, aSternStarboard.lat)
             ];
-            ctx.globalAlpha = 1.0; // fixes transparency
-            ctx.beginPath();
-            ctx.strokeStyle = '#303030';
-            ctx.fillStyle = '#ff000020';
-            ctx.lineWidth = 1;
-            ctx.moveTo(aTargetRectXY[0][0], aTargetRectXY[0][1]);
-            ctx.lineTo(aTargetRectXY[1][0], aTargetRectXY[1][1]);
-            ctx.lineTo(aTargetRectXY[2][0], aTargetRectXY[2][1]);
-            ctx.lineTo(aTargetRectXY[3][0], aTargetRectXY[3][1]);
-            ctx.lineTo(aTargetRectXY[4][0], aTargetRectXY[4][1]);
-            ctx.closePath();
-            ctx.stroke();
-            ctx.fill();
+            fCtx.globalAlpha = 1.0; // fixes transparency
+            fCtx.beginPath();
+            fCtx.strokeStyle = '#303030';
+            fCtx.fillStyle = '#ff000020';
+            fCtx.lineWidth = 1;
+            fCtx.moveTo(aTargetRectXY[0][0], aTargetRectXY[0][1]);
+            fCtx.lineTo(aTargetRectXY[1][0], aTargetRectXY[1][1]);
+            fCtx.lineTo(aTargetRectXY[2][0], aTargetRectXY[2][1]);
+            fCtx.lineTo(aTargetRectXY[3][0], aTargetRectXY[3][1]);
+            fCtx.lineTo(aTargetRectXY[4][0], aTargetRectXY[4][1]);
+            fCtx.closePath();
+            fCtx.stroke();
+            fCtx.fill();
         }
 
-        if (isWarning) {
-            let aP2 = aP1.destinationPoint(targetSpeed * tcpa, targetCourse);
-            var aTargetCPAXY = self.lonLatToPixel(aP2.lon, aP2.lat);
-            let aP3 = new LatLon(ownPos.lat, ownPos.lon);
-            let aP4 = aP3.destinationPoint(ownSpeed * tcpa, ownCourse);
-            var aOwnXY = self.lonLatToPixel(aP3.lon, aP3.lat);
-            var aOwnCPAXY = self.lonLatToPixel(aP4.lon, aP4.lat);
+        if (fIsWarning) {
+            let aP2 = aP1.destinationPoint(fTargetSpeed * fTcpa, fTargetCourse);
+            var aTargetCPAXY = fSelf.lonLatToPixel(aP2.lon, aP2.lat);
+            let aP3 = new aLatLon(fOwnPos.lat, fOwnPos.lon);
+            let aP4 = aP3.destinationPoint(fOwnSpeed * fTcpa, fOwnCourse);
+            var aOwnXY = fSelf.lonLatToPixel(aP3.lon, aP3.lat);
+            var aOwnCPAXY = fSelf.lonLatToPixel(aP4.lon, aP4.lat);
 
-            ctx.globalAlpha = self.CPAOpacity;
+            fCtx.globalAlpha = fSelf.CPAOpacity;
             // draw CPA connection
-            ctx.beginPath();
-            ctx.strokeStyle = self.CPAFillColor;
-            ctx.lineWidth = self.CPALineWidth;
-            ctx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
-            ctx.lineTo(aTargetCPAXY[0], aTargetCPAXY[1]);
-            ctx.stroke();
+            fCtx.beginPath();
+            fCtx.strokeStyle = fSelf.CPAFillColor;
+            fCtx.lineWidth = fSelf.CPALineWidth;
+            fCtx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
+            fCtx.lineTo(aTargetCPAXY[0], aTargetCPAXY[1]);
+            fCtx.stroke();
 
-            ctx.beginPath();
-            ctx.strokeStyle = self.CPALineColor;
-            ctx.setLineDash([10, 6]);
-            ctx.lineWidth = self.CPALineWidth;
-            ctx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
-            ctx.lineTo(aTargetCPAXY[0], aTargetCPAXY[1]);
-            ctx.stroke();
+            fCtx.beginPath();
+            fCtx.strokeStyle = fSelf.CPALineColor;
+            fCtx.setLineDash([10, 6]);
+            fCtx.lineWidth = fSelf.CPALineWidth;
+            fCtx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
+            fCtx.lineTo(aTargetCPAXY[0], aTargetCPAXY[1]);
+            fCtx.stroke();
 
             // draw lines from current positions to positions at TCPA
-            ctx.beginPath();
-            ctx.strokeStyle = self.CPACourseColor;
+            fCtx.beginPath();
+            fCtx.strokeStyle = fSelf.CPACourseColor;
             //ctx.setLineDash([1, 1]);
-            ctx.lineWidth = 1;
-            ctx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
-            ctx.lineTo(aOwnXY[0], aOwnXY[1]);
-            ctx.stroke();
+            fCtx.lineWidth = 1;
+            fCtx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
+            fCtx.lineTo(aOwnXY[0], aOwnXY[1]);
+            fCtx.stroke();
 
-            ctx.beginPath();
-            ctx.moveTo(aTargetCPAXY[0], aTargetCPAXY[1]);
-            ctx.lineTo(aTargetXY[0], aTargetXY[1]);
-            ctx.stroke();
+            fCtx.beginPath();
+            fCtx.moveTo(aTargetCPAXY[0], aTargetCPAXY[1]);
+            fCtx.lineTo(aTargetXY[0], aTargetXY[1]);
+            fCtx.stroke();
 
             // draw circles for positions at TCPA
-            ctx.lineWidth = self.CPAStrokeWidthCircle;
-            ctx.strokeStyle = self.CPAStrokeColorCircle;
-            ctx.setLineDash([]);
-            ctx.fillStyle = self.CPAFillColor;
-            ctx.beginPath();
-            ctx.arc(aOwnCPAXY[0], aOwnCPAXY[1], self.CPACircleRadius, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.stroke();
+            fCtx.lineWidth = fSelf.CPAStrokeWidthCircle;
+            fCtx.strokeStyle = fSelf.CPAStrokeColorCircle;
+            fCtx.setLineDash([]);
+            fCtx.fillStyle = fSelf.CPAFillColor;
+            fCtx.beginPath();
+            fCtx.arc(aOwnCPAXY[0], aOwnCPAXY[1], fSelf.CPACircleRadius, 0, 2 * Math.PI);
+            fCtx.fill();
+            fCtx.stroke();
 
-            if (targetSpeed > 0.0) {
-                ctx.beginPath();
-                ctx.arc(aTargetCPAXY[0], aTargetCPAXY[1], self.CPACircleRadius, 0, 2 * Math.PI);
-                ctx.fill();
-                ctx.stroke();
+            if (fTargetSpeed > 0.0) {
+                fCtx.beginPath();
+                fCtx.arc(aTargetCPAXY[0], aTargetCPAXY[1], fSelf.CPACircleRadius, 0, 2 * Math.PI);
+                fCtx.fill();
+                fCtx.stroke();
             }
         }
     }
 
     console.log("aiscpa plugin.mjs check version");
-    console.log("AvNav version: ", api.getAvNavVersion());
-    if (api.getAvNavVersion() < 20261019) {
+    console.log("AvNav version: ", fApi.getAvNavVersion());
+    if (fApi.getAvNavVersion() < 20261019) {
         console.log("AIS CPA plugin requires AVNav version 20261019 or higher, please update your AVNav installation");
-        api.showToast("AIS CPA plugin requires AVNav version 20261019 or higher, please update your AVNav installation");
+        fApi.showToast("AIS CPA plugin requires AVNav version 20261019 or higher, please update your AVNav installation");
         return;
     }
 
-    api.registerWidget(AisCpaWidget, AisCpaParameter);
+    fApi.registerWidget(AisCpaWidget, AisCpaParameter);
     console.log("aiscpa plugin.mjs registerWidget(AisCpaWidget, AisCpaParameter) done");
 
-    api.registerUserButton({
+    fApi.registerUserButton({
         name: 'AisCpaButton',
         shortText: 'AIS CPA',
         longText: 'Show/Hide AIS CPA drawings',
@@ -304,19 +304,19 @@ export default async (api) => {
         storeKeys: {
             toggle: STOREKEYAISCPA
         },
-        onClick: (ev) => {
+        onClick: (fEv) => {
             //console.log("AisCpaWidget::onClick() ev = ", ev);
-            let toggle = !api.getStoreData(STOREKEYAISCPA);
-            api.setStoreData(STOREKEYAISCPA, toggle);
+            let toggle = !fApi.getStoreData(STOREKEYAISCPA);
+            fApi.setStoreData(STOREKEYAISCPA, toggle);
             //console.log("AisCpaWidget::onClick() toggle = ", toggle);
         }
     }, 'navpage');
     console.log("aiscpa plugin.mjs registerUserButton(AisCpaWidget, AisCpaParameter) done");
 
     console.log("aiscpa plugin.mjs loaded")
-    console.log("name", api.getPluginName());
-    console.log("baseUrl", api.getBaseUrl());
-    const cfg = await api.getConfig();
+    console.log("name", fApi.getPluginName());
+    console.log("baseUrl", fApi.getBaseUrl());
+    const cfg = await fApi.getConfig();
     console.log("plugin config", cfg);
     return () => {
         console.log("cleanup called for aiscpa plugin.mjs");
