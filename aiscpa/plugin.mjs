@@ -284,6 +284,14 @@ export default async (api) => {
         }
     }
 
+    console.log("aiscpa plugin.mjs check version");
+    console.log("AvNav version: ", api.getAvNavVersion());
+    if (api.getAvNavVersion() < 20261019) {
+        console.log("AIS CPA plugin requires AVNav version 20261019 or higher, please update your AVNav installation");
+        api.showToast("AIS CPA plugin requires AVNav version 20261019 or higher, please update your AVNav installation");
+        return;
+    }
+
     api.registerWidget(AisCpaWidget, AisCpaParameter);
     console.log("aiscpa plugin.mjs registerWidget(AisCpaWidget, AisCpaParameter) done");
 
