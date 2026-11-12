@@ -18,6 +18,14 @@ At AvNav *Display Setting->AIS* disable *curved vectors* and set *relative motio
 https://github.com/nocheinpeter/avnav-aiscpaplugin/blob/main/releases/avnav-aiscpaplugin-20261108.zip
 - fixed tcpa evalution, sometimes drawing stopped 
 
+## Actual Beta
+
+https://github.com/nocheinpeter/avnav-aiscpaplugin/blob/beta/releases/avnav-aiscpaplugin-beta.zip
+- bugfix wrong canvas cleanup could overwrite other plugin drawings
+- internal refactoring
+- check min. AvNav version needed
+- minimum zoom needed by user config for drawings
+
 ## Previous Releases
 
 https://github.com/nocheinpeter/avnav-aiscpaplugin/blob/main/releases/avnav-aiscpaplugin-20261107.zip
