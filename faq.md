@@ -20,4 +20,4 @@ Drawings may defer from realtiy due to
 - ship dimension are not sent by AIS target
 - GPS antenna position is not sent by AIS target or unkown
 - needs minimum AvNav version 20261106
-- zoom is less than 11
+- zoom is less than configured min zoom in plugin settings
