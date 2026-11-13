@@ -119,12 +119,6 @@ export default async (fApi) => {
                 return;
             }
 
-            // quit if no data
-            if (!fProps.position || !fProps.position.lat || !fProps.position.lon) {
-                //console.log("AisCpaWidget::renderCanvas() no own position", props);
-                return;
-            }
-
             var aSpeed = fProps.speed;
             if (!aSpeed) {
                 aSpeed = 0.0;
@@ -155,6 +149,10 @@ export default async (fApi) => {
                         aTargetData = aAis.estimated;
                     }
 
+                    if (typeof aTargetData === 'undefined' || typeof aTargetData.lat === 'undefined'
+                      || typeof aTargetData.lon === 'undefined') {
+                        continue;
+                    }
                     drawCPA(this, aCtx, aAis.warning, fProps.position, aSpeed, aCourse, aTargetData, aTargetSpeed, aTargetCourse,
                         aTcpa, aAis.received.length, aAis.received.beam, aAis.received.to_bow, aAis.received.to_port, aAis.received.heading);
                 }
@@ -223,6 +221,13 @@ export default async (fApi) => {
             fCtx.closePath();
             fCtx.stroke();
             fCtx.fill();
+        }
+
+            
+        if (typeof fOwnPos === 'undefined' || typeof fOwnPos.lat === 'undefined'
+          || typeof fOwnPos.lon === 'undefined') {
+            //console.log("AisCpaWidget::renderCanvas() no own position", props);
+            return; // quit if no data
         }
 
         if (fIsWarning) {
