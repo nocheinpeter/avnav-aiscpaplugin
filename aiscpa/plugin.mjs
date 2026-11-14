@@ -67,7 +67,17 @@ export default async (fApi) => {
             type: "FLOAT",
             default: 11.0,
             description: "Minimum zoom level to draw CPA and real size targets"
-        }
+        },
+        HistoryTime: {
+            type: "NUMBER",
+            default: 10,
+            description: "Time in minutes to store target history for drawing, 0 disables history drawing"
+        },
+        HistoryColor: {
+            type: "COLOR",
+            default: "#606060",
+            description: "Color of the target history"
+        }   
     };
 
     var AisCpaWidget = {
@@ -81,6 +91,8 @@ export default async (fApi) => {
         StrokeColorCircle: 'black',
         DrawRealSize: true,
         MinZoom: 11,
+        HistoryTime: 10,
+        HistoryColor: '#606060',
         name: "AisCpaWidget",
         type: "map",
         // Fordere einfach alles an, was dich interessiert
@@ -96,6 +108,7 @@ export default async (fApi) => {
             aisLayerVisible: 'properties.layers.ais'
         },
         initFunction: function (fCanvas, fProps) {
+            console.log("AisCpaWidget::initFunction() fProps = ", fProps);
             this.CPAOpacity = fProps.Opacity;
             this.CPAStrokeWidthCircle = fProps.StrokeWidthCircle;
             this.CPAFillColor = fProps.FillColor;
@@ -106,6 +119,11 @@ export default async (fApi) => {
             this.CPACourseColor = fProps.navCircleColor;
             this.CPADrawRealSize = fProps.DrawRealSize;
             this.CPAMinZoom = fProps.MinZoom;
+            this.HistoryTime = fProps.HistoryTime;
+            this.HistoryColor = fProps.HistoryColor;
+        },
+        finalizeFunction: function (fCanvas) {
+            console.log("AisCpaWidget::finalizeFunction()");
         },
         renderCanvas: function (fCanvas, fProps) {
             //console.log("AisCpaWidget::renderCanvas() props = ", props);
@@ -153,8 +171,12 @@ export default async (fApi) => {
                       || typeof aTargetData.lon === 'undefined') {
                         continue;
                     }
+
+                    const aHistory = saveHistory(this, aAis);
+
                     drawCPA(this, aCtx, aAis.warning, fProps.position, aSpeed, aCourse, aTargetData, aTargetSpeed, aTargetCourse,
-                        aTcpa, aAis.received.length, aAis.received.beam, aAis.received.to_bow, aAis.received.to_port, aAis.received.heading);
+                        aTcpa, aAis.received.length, aAis.received.beam, aAis.received.to_bow, aAis.received.to_port, aAis.received.heading,
+                        aHistory.pos);
                 }
                 catch (aE) {
                     console.log("AisCpaWidget::renderCanvas() error while processing AIS data for mmsi " + aAis.mmsi, aE);
@@ -166,12 +188,50 @@ export default async (fApi) => {
         }
     }
 
+    function saveHistory(fSelf, fAis) {
+        if (fSelf.HistoryTime <= 0) {
+            if (typeof fSelf.targetHistory !== 'undefined') {
+                console.log("AisCpaWidget::saveHistory() deleting targetHistory");
+                fSelf.targetHistory.clear();
+            }
+            return { counter: 0, pos: [] };
+        }
+
+        if (typeof fSelf.targetHistory === 'undefined') {
+            console.log("AisCpaWidget::saveHistory() creating targetHistory map");
+            fSelf.targetHistory = new Map();
+        }
+
+        const aNow = Date.now();
+        const aOldestTime = aNow - fSelf.HistoryTime * 60 * 1000;
+        if (fSelf.targetHistory.has(fAis.mmsi)) {
+            let aHistory = fSelf.targetHistory.get(fAis.mmsi);
+            while (aHistory.pos.length > 0
+              && (!Number.isFinite(aHistory.pos[0].timestamp) || aHistory.pos[0].timestamp < aOldestTime)) {
+                console.log("AisCpaWidget::saveHistory() deleting old history for mmsi " + fAis.mmsi + ", timestamp = " + aHistory.pos[0].timestamp);
+                aHistory.pos.shift();
+            }
+            let aLastPos = aHistory.pos[aHistory.pos.length - 1];
+            if (!aLastPos || aLastPos.lat !== fAis.received.lat || aLastPos.lon !== fAis.received.lon) {
+                aHistory.pos.push({ lat: fAis.received.lat, lon: fAis.received.lon, timestamp: aNow });
+                aHistory.counter += 1;
+            }
+            else {
+                aLastPos.timestamp = aNow;
+            }
+        }
+        else {
+            let aHistory = { counter: 1, pos: [{ lat: fAis.received.lat, lon: fAis.received.lon, timestamp: aNow }] };
+            fSelf.targetHistory.set(fAis.mmsi, aHistory);
+        }
+        return fSelf.targetHistory.get(fAis.mmsi);
+    }
+
     function drawCPA(fSelf, fCtx, fIsWarning, fOwnPos, fOwnSpeed, fOwnCourse, fTargetPos, fTargetSpeed, fTargetCourse, fTcpa, fTargetLength, fTargetWidth,
-        fTargetToBow, fTargetToPort, fTargetHeading) {
+        fTargetToBow, fTargetToPort, fTargetHeading, fTargetHistory) {
         /*         console.log("AisCpaWidget::drawCPA() ownPos = ", ownPos, " ownSpeed = ", ownSpeed, " ownCourse = ", ownCourse);
                 console.log("AisCpaWidget::drawCPA() targetPos = ", targetPos, " targetSpeed = ", targetSpeed, " targetCourse = ", targetCourse);
-                console.log("
-                AisCpaWidget::drawCPA() tcpa = ", tcpa);   
+                console.log("AisCpaWidget::drawCPA() tcpa = ", tcpa);   
          */
         let aLatLon = fApi.LatLon();
         let aP1 = new aLatLon(fTargetPos.lat, fTargetPos.lon);
@@ -223,10 +283,36 @@ export default async (fApi) => {
             fCtx.fill();
         }
 
-            
+        if (aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= fCtx.canvas.width && aTargetXY[1] <= fCtx.canvas.height) {
+            // draw target history
+            fCtx.lineWidth = 2;
+            fCtx.strokeStyle = fSelf.HistoryColor;
+            fCtx.beginPath();
+            let aFirst = true;
+            for (const aPos of fTargetHistory) {
+                let aP = new aLatLon(aPos.lat, aPos.lon);
+                var aTargetHistoryXY = fSelf.lonLatToPixel(aP.lon, aP.lat);
+                if (aFirst) {
+                    fCtx.moveTo(aTargetHistoryXY[0], aTargetHistoryXY[1]);
+                    aFirst = false;
+                } else {
+                    fCtx.lineTo(aTargetHistoryXY[0], aTargetHistoryXY[1]);
+                }   
+            }
+            fCtx.stroke();
+            fCtx.lineWidth = 1;
+            for (let i = 0; i < fTargetHistory.length - 1; i++) {
+                let aPos = fTargetHistory[i];
+                let aP = new aLatLon(aPos.lat, aPos.lon);   
+                var aTargetHistoryXY = fSelf.lonLatToPixel(aP.lon, aP.lat);
+                fCtx.beginPath();
+                fCtx.arc(aTargetHistoryXY[0], aTargetHistoryXY[1], 5, 0, 2 * Math.PI);
+                fCtx.stroke();
+            }
+        }
+
         if (typeof fOwnPos === 'undefined' || typeof fOwnPos.lat === 'undefined'
           || typeof fOwnPos.lon === 'undefined') {
-            //console.log("AisCpaWidget::renderCanvas() no own position", props);
             return; // quit if no data
         }
 
