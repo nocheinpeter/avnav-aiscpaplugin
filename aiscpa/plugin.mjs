@@ -328,7 +328,9 @@ export default async (fApi) => {
                 let aP = new aLatLon(aPos.lat, aPos.lon);   
                 var aTargetHistoryXY = fSelf.lonLatToPixel(aP.lon, aP.lat);
                 fCtx.beginPath();
-                fCtx.arc(aTargetHistoryXY[0], aTargetHistoryXY[1], 5, 0, 2 * Math.PI);
+                fCtx.arc(aTargetHistoryXY[0], aTargetHistoryXY[1], 2, 0, 2 * Math.PI);
+                fCtx.fillStyle = fSelf.HistoryColor;
+                fCtx.fill();
                 fCtx.stroke();
             }
         }
