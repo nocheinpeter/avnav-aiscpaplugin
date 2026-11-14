@@ -88,6 +88,7 @@ export default async (fApi) => {
         }
 
         saveHistory(fMmsi, fPosition, fMaxHistoryTime) {
+
             if (fMaxHistoryTime <= 0) {
                 this.clear();
                 return { counter: 0, pos: [] };
@@ -102,6 +103,11 @@ export default async (fApi) => {
             }
 
             this.removeExpiredPositions(fMmsi, aHistory, aOldestTime);
+            
+            if (typeof fPosition === 'undefined' || fPosition === null || typeof fPosition.lat === 'undefined' || typeof fPosition.lon === 'undefined') {
+                return aHistory;
+            }
+
             let aLastPos = aHistory.pos[aHistory.pos.length - 1];
             if (!aLastPos || aLastPos.lat !== fPosition.lat || aLastPos.lon !== fPosition.lon) {
                 aHistory.pos.push({ lat: fPosition.lat, lon: fPosition.lon, timestamp: aNow });
@@ -120,7 +126,7 @@ export default async (fApi) => {
         }
 
         removeExpiredPositions(fMmsi, fHistory, fOldestTime) {
-            console.log("TargetHistory::removeExpiredPositions() called for mmsi " + fMmsi);
+            //console.log("TargetHistory::removeExpiredPositions() called for mmsi " + fMmsi);
             while (fHistory.pos.length > 0
                 && (!Number.isFinite(fHistory.pos[0].timestamp) || fHistory.pos[0].timestamp < fOldestTime)) {
                 console.log("TargetHistory::removeExpiredPositions() deleting old history for mmsi " + fMmsi
@@ -213,12 +219,13 @@ export default async (fApi) => {
                     var aTcpa = aAis.cpadata.tcpa || 0.0;
 
                     var aTargetData = aAis.received;
-                    if (aAis.estimated && aAis.estimated.lat && aAis.estimated.lon) {
+                    if (typeof aAis.estimated !== 'undefined' && aAis.estimated !== null 
+                        && typeof aAis.estimated.lat !== 'undefined' && typeof aAis.estimated.lon !== 'undefined'   ) {
                         aTargetData = aAis.estimated;
                     }
 
-                    if (typeof aTargetData === 'undefined' || typeof aTargetData.lat === 'undefined'
-                      || typeof aTargetData.lon === 'undefined') {
+                    if (typeof aTargetData === 'undefined' || aTargetData === null || typeof aTargetData.lat === 'undefined'
+                      || typeof aTargetData.lon === 'undefined' || aTargetData.lat === null || aTargetData.lon === null) {
                         continue;
                     }
 
@@ -261,7 +268,7 @@ export default async (fApi) => {
         if (fSelf.CPADrawRealSize && aIsAntennaPosValid
           && aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= fCtx.canvas.width && aTargetXY[1] <= fCtx.canvas.height) {
             // draw real target size
-            if (!fTargetHeading) {
+            if (typeof fTargetHeading === 'undefined' || fTargetHeading === null) {
                 fTargetHeading = fTargetCourse;
             }
             // target shape with smaller bow
@@ -326,7 +333,7 @@ export default async (fApi) => {
             }
         }
 
-        if (typeof fOwnPos === 'undefined' || typeof fOwnPos.lat === 'undefined'
+        if (typeof fOwnPos === 'undefined' || fOwnPos === null || typeof fOwnPos.lat === 'undefined'
           || typeof fOwnPos.lon === 'undefined') {
             return; // quit if no data
         }
