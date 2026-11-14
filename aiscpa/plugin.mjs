@@ -80,6 +80,56 @@ export default async (fApi) => {
         }   
     };
 
+
+    // saves targets track history
+    class TargetHistory {
+        constructor() {
+            this.historyByMmsi = new Map();
+        }
+
+        saveHistory(fMmsi, fPosition, fMaxHistoryTime) {
+            if (fMaxHistoryTime <= 0) {
+                this.clear();
+                return { counter: 0, pos: [] };
+            }
+
+            const aNow = Date.now();
+            const aOldestTime = aNow - fMaxHistoryTime * 60 * 1000;
+            let aHistory = this.historyByMmsi.get(fMmsi);
+            if (!aHistory) {
+                aHistory = { counter: 0, pos: [] };
+                this.historyByMmsi.set(fMmsi, aHistory);
+            }
+
+            this.removeExpiredPositions(fMmsi, aHistory, aOldestTime);
+            let aLastPos = aHistory.pos[aHistory.pos.length - 1];
+            if (!aLastPos || aLastPos.lat !== fPosition.lat || aLastPos.lon !== fPosition.lon) {
+                aHistory.pos.push({ lat: fPosition.lat, lon: fPosition.lon, timestamp: aNow });
+                aHistory.counter += 1;
+            }
+            else {
+                aLastPos.timestamp = aNow;
+            }
+            return aHistory;
+        }
+
+        // clears all target histories
+        clear() {
+            console.log("TargetHistory::clear()");
+            this.historyByMmsi.clear();
+        }
+
+        removeExpiredPositions(fMmsi, fHistory, fOldestTime) {
+            console.log("TargetHistory::removeExpiredPositions() called for mmsi " + fMmsi);
+            while (fHistory.pos.length > 0
+                && (!Number.isFinite(fHistory.pos[0].timestamp) || fHistory.pos[0].timestamp < fOldestTime)) {
+                console.log("TargetHistory::removeExpiredPositions() deleting old history for mmsi " + fMmsi
+                    + ", timestamp = " + fHistory.pos[0].timestamp);
+                fHistory.pos.shift();
+            }
+        }
+    }
+
     var AisCpaWidget = {
         // Editable Parameters
         Opacity: 1.0,
@@ -172,7 +222,11 @@ export default async (fApi) => {
                         continue;
                     }
 
-                    const aHistory = saveHistory(this, aAis);
+                    if (!(this.targetHistory instanceof TargetHistory)) {
+                        this.targetHistory = new TargetHistory();
+                        console.log("AisCpaWidget::saveHistory() creating targetHistory");
+                    }
+                    const aHistory = this.targetHistory.saveHistory(aAis.mmsi, aAis.received, this.HistoryTime);
 
                     drawCPA(this, aCtx, aAis.warning, fProps.position, aSpeed, aCourse, aTargetData, aTargetSpeed, aTargetCourse,
                         aTcpa, aAis.received.length, aAis.received.beam, aAis.received.to_bow, aAis.received.to_port, aAis.received.heading,
@@ -186,45 +240,6 @@ export default async (fApi) => {
             aCtx.restore();
             //console.log("AisCpaWidget::renderCanvas() fini");
         }
-    }
-
-    function saveHistory(fSelf, fAis) {
-        if (fSelf.HistoryTime <= 0) {
-            if (typeof fSelf.targetHistory !== 'undefined') {
-                console.log("AisCpaWidget::saveHistory() deleting targetHistory");
-                fSelf.targetHistory.clear();
-            }
-            return { counter: 0, pos: [] };
-        }
-
-        if (typeof fSelf.targetHistory === 'undefined') {
-            console.log("AisCpaWidget::saveHistory() creating targetHistory map");
-            fSelf.targetHistory = new Map();
-        }
-
-        const aNow = Date.now();
-        const aOldestTime = aNow - fSelf.HistoryTime * 60 * 1000;
-        if (fSelf.targetHistory.has(fAis.mmsi)) {
-            let aHistory = fSelf.targetHistory.get(fAis.mmsi);
-            while (aHistory.pos.length > 0
-              && (!Number.isFinite(aHistory.pos[0].timestamp) || aHistory.pos[0].timestamp < aOldestTime)) {
-                console.log("AisCpaWidget::saveHistory() deleting old history for mmsi " + fAis.mmsi + ", timestamp = " + aHistory.pos[0].timestamp);
-                aHistory.pos.shift();
-            }
-            let aLastPos = aHistory.pos[aHistory.pos.length - 1];
-            if (!aLastPos || aLastPos.lat !== fAis.received.lat || aLastPos.lon !== fAis.received.lon) {
-                aHistory.pos.push({ lat: fAis.received.lat, lon: fAis.received.lon, timestamp: aNow });
-                aHistory.counter += 1;
-            }
-            else {
-                aLastPos.timestamp = aNow;
-            }
-        }
-        else {
-            let aHistory = { counter: 1, pos: [{ lat: fAis.received.lat, lon: fAis.received.lon, timestamp: aNow }] };
-            fSelf.targetHistory.set(fAis.mmsi, aHistory);
-        }
-        return fSelf.targetHistory.get(fAis.mmsi);
     }
 
     function drawCPA(fSelf, fCtx, fIsWarning, fOwnPos, fOwnSpeed, fOwnCourse, fTargetPos, fTargetSpeed, fTargetCourse, fTcpa, fTargetLength, fTargetWidth,
