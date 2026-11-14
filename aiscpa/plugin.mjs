@@ -67,6 +67,11 @@ export default async (fApi) => {
             type: "FLOAT",
             default: 11.0,
             description: "Minimum zoom level to draw CPA and real size targets"
+        },
+        Relative: {
+            type: "BOOLEAN",
+            default: false,
+            description: "draw CPA line relative to own ship, perpendicular to RMV"
         }
     };
 
@@ -81,6 +86,7 @@ export default async (fApi) => {
         StrokeColorCircle: 'black',
         DrawRealSize: true,
         MinZoom: 11,
+        Relative: false,
         name: "AisCpaWidget",
         type: "map",
         // Fordere einfach alles an, was dich interessiert
@@ -106,6 +112,7 @@ export default async (fApi) => {
             this.CPACourseColor = fProps.navCircleColor;
             this.CPADrawRealSize = fProps.DrawRealSize;
             this.CPAMinZoom = fProps.MinZoom;
+            this.CPARelative = fProps.Relative;
         },
         renderCanvas: function (fCanvas, fProps) {
             //console.log("AisCpaWidget::renderCanvas() props = ", props);
@@ -116,6 +123,12 @@ export default async (fApi) => {
             let aIsVisible = fApi.getStoreData(STOREKEYAISCPA);
             if (!aIsVisible) {
                 //console.log("AisCpaWidget::renderCanvas() not visible");
+                return;
+            }
+
+            // quit if no data
+            if (!fProps.position || !fProps.position.lat || !fProps.position.lon) {
+                //console.log("AisCpaWidget::renderCanvas() no own position", props);
                 return;
             }
 
@@ -232,11 +245,12 @@ export default async (fApi) => {
 
         if (fIsWarning) {
             let aP2 = aP1.destinationPoint(fTargetSpeed * fTcpa, fTargetCourse);
-            var aTargetCPAXY = fSelf.lonLatToPixel(aP2.lon, aP2.lat);
+            if (fSelf.CPARelative) aP2 = aP2.destinationPoint(-fOwnSpeed * fTcpa, fOwnCourse);
+            let aTargetCPAXY = fSelf.lonLatToPixel(aP2.lon, aP2.lat);
             let aP3 = new aLatLon(fOwnPos.lat, fOwnPos.lon);
+            let aOwnXY = fSelf.lonLatToPixel(aP3.lon, aP3.lat);
             let aP4 = aP3.destinationPoint(fOwnSpeed * fTcpa, fOwnCourse);
-            var aOwnXY = fSelf.lonLatToPixel(aP3.lon, aP3.lat);
-            var aOwnCPAXY = fSelf.lonLatToPixel(aP4.lon, aP4.lat);
+            let aOwnCPAXY = fSelf.CPARelative ? aOwnXY : fSelf.lonLatToPixel(aP4.lon, aP4.lat);
 
             fCtx.globalAlpha = fSelf.CPAOpacity;
             // draw CPA connection
@@ -274,12 +288,14 @@ export default async (fApi) => {
             fCtx.strokeStyle = fSelf.CPAStrokeColorCircle;
             fCtx.setLineDash([]);
             fCtx.fillStyle = fSelf.CPAFillColor;
-            fCtx.beginPath();
-            fCtx.arc(aOwnCPAXY[0], aOwnCPAXY[1], fSelf.CPACircleRadius, 0, 2 * Math.PI);
-            fCtx.fill();
-            fCtx.stroke();
+            if (!fSelf.CPARelative) {
+                fCtx.beginPath();
+                fCtx.arc(aOwnCPAXY[0], aOwnCPAXY[1], fSelf.CPACircleRadius, 0, 2 * Math.PI);
+                fCtx.fill();
+                fCtx.stroke();
+            }
 
-            if (fTargetSpeed > 0.0) {
+            if (fSelf.CPARelative || fTargetSpeed > 0.0) {
                 fCtx.beginPath();
                 fCtx.arc(aTargetCPAXY[0], aTargetCPAXY[1], fSelf.CPACircleRadius, 0, 2 * Math.PI);
                 fCtx.fill();
