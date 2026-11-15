@@ -77,6 +77,11 @@ export default async (fApi) => {
             type: "COLOR",
             default: "#606060",
             description: "Color of the target history"
+        },
+        HistoryLineWidth: {
+            type: "NUMBER",
+            default: 2,
+            description: "Width of the target history line"
         }   
     };
 
@@ -85,6 +90,7 @@ export default async (fApi) => {
     class TargetHistory {
         constructor() {
             this.historyByMmsi = new Map();
+            this.positionCount = 0;
         }
 
         saveHistory(fMmsi, fPosition, fMaxHistoryTime) {
@@ -112,6 +118,7 @@ export default async (fApi) => {
             if (!aLastPos || aLastPos.lat !== fPosition.lat || aLastPos.lon !== fPosition.lon) {
                 aHistory.pos.push({ lat: fPosition.lat, lon: fPosition.lon, timestamp: aNow });
                 aHistory.counter += 1;
+                this.positionCount += 1;
             }
             else {
                 aLastPos.timestamp = aNow;
@@ -123,6 +130,15 @@ export default async (fApi) => {
         clear() {
             console.log("TargetHistory::clear()");
             this.historyByMmsi.clear();
+            this.positionCount = 0;
+        }
+
+        size() {
+            return this.historyByMmsi.size;
+        }
+
+        numPositions() {
+            return this.positionCount;
         }
 
         removeExpiredPositions(fMmsi, fHistory, fOldestTime) {
@@ -132,9 +148,12 @@ export default async (fApi) => {
                 console.log("TargetHistory::removeExpiredPositions() deleting old history for mmsi " + fMmsi
                     + ", timestamp = " + fHistory.pos[0].timestamp);
                 fHistory.pos.shift();
+                this.positionCount -= 1;
             }
         }
     }
+
+    var mTargetHistory = new TargetHistory();
 
     var AisCpaWidget = {
         // Editable Parameters
@@ -149,6 +168,7 @@ export default async (fApi) => {
         MinZoom: 11,
         HistoryTime: 10,
         HistoryColor: '#606060',
+        HistoryLineWidth: 2,
         name: "AisCpaWidget",
         type: "map",
         // Fordere einfach alles an, was dich interessiert
@@ -164,7 +184,7 @@ export default async (fApi) => {
             aisLayerVisible: 'properties.layers.ais'
         },
         initFunction: function (fCanvas, fProps) {
-            console.log("AisCpaWidget::initFunction() fProps = ", fProps);
+            console.log("AisCpaWidget::initFunction() fProps = ", fProps + " history size = " + mTargetHistory.size());
             this.CPAOpacity = fProps.Opacity;
             this.CPAStrokeWidthCircle = fProps.StrokeWidthCircle;
             this.CPAFillColor = fProps.FillColor;
@@ -177,6 +197,7 @@ export default async (fApi) => {
             this.CPAMinZoom = fProps.MinZoom;
             this.HistoryTime = fProps.HistoryTime;
             this.HistoryColor = fProps.HistoryColor;
+            this.HistoryLineWidth = fProps.HistoryLineWidth;
         },
         finalizeFunction: function (fCanvas) {
             console.log("AisCpaWidget::finalizeFunction()");
@@ -229,11 +250,11 @@ export default async (fApi) => {
                         continue;
                     }
 
-                    if (!(this.targetHistory instanceof TargetHistory)) {
-                        this.targetHistory = new TargetHistory();
+                    if (!(mTargetHistory instanceof TargetHistory)) {
+                        mTargetHistory = new TargetHistory();
                         console.log("AisCpaWidget::saveHistory() creating targetHistory");
                     }
-                    const aHistory = this.targetHistory.saveHistory(aAis.mmsi, aAis.received, this.HistoryTime);
+                    const aHistory = mTargetHistory.saveHistory(aAis.mmsi, aAis.received, this.HistoryTime);
 
                     drawCPA(this, aCtx, aAis.warning, fProps.position, aSpeed, aCourse, aTargetData, aTargetSpeed, aTargetCourse,
                         aTcpa, aAis.received.length, aAis.received.beam, aAis.received.to_bow, aAis.received.to_port, aAis.received.heading,
@@ -247,6 +268,43 @@ export default async (fApi) => {
             aCtx.restore();
             //console.log("AisCpaWidget::renderCanvas() fini");
         }
+    }
+
+    function lineIntersectsCanvas(fStart, fEnd, fWidth, fHeight) {
+        const aX = fEnd[0] - fStart[0];
+        const aY = fEnd[1] - fStart[1];
+        const aP = [-aX, aX, -aY, aY];
+        const aQ = [fStart[0], fWidth - fStart[0], fStart[1], fHeight - fStart[1]];
+        let aMin = 0;
+        let aMax = 1;
+
+        if (![...fStart, ...fEnd, fWidth, fHeight].every(Number.isFinite)) {
+            return false;
+        }
+
+        for (let i = 0; i < aP.length; i++) {
+            if (aP[i] === 0) {
+                if (aQ[i] < 0) {
+                    return false;
+                }
+            }
+            else {
+                const aRatio = aQ[i] / aP[i];
+                if (aP[i] < 0) {
+                    if (aRatio > aMax) {
+                        return false;
+                    }
+                    aMin = Math.max(aMin, aRatio);
+                }
+                else {
+                    if (aRatio < aMin) {
+                        return false;
+                    }
+                    aMax = Math.min(aMax, aRatio);
+                }
+            }
+        }
+        return true;
     }
 
     function drawCPA(fSelf, fCtx, fIsWarning, fOwnPos, fOwnSpeed, fOwnCourse, fTargetPos, fTargetSpeed, fTargetCourse, fTcpa, fTargetLength, fTargetWidth,
@@ -265,9 +323,11 @@ export default async (fApi) => {
         aIsAntennaPosValid = aIsAntennaPosValid && (fTargetToPort !== null) && (fTargetToBow !== null) && (fTargetLength !== null) && (fTargetWidth !== null);
         aIsAntennaPosValid = aIsAntennaPosValid && ((fTargetToPort > 0) || (fTargetToBow > 0));
 
+        //
+        // draw real target size
+        //
         if (fSelf.CPADrawRealSize && aIsAntennaPosValid
           && aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= fCtx.canvas.width && aTargetXY[1] <= fCtx.canvas.height) {
-            // draw real target size
             if (typeof fTargetHeading === 'undefined' || fTargetHeading === null) {
                 fTargetHeading = fTargetCourse;
             }
@@ -305,9 +365,22 @@ export default async (fApi) => {
             fCtx.fill();
         }
 
-        if (aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= fCtx.canvas.width && aTargetXY[1] <= fCtx.canvas.height) {
-            // draw target history
-            fCtx.lineWidth = 2;
+        //
+        // draw target history if target is visible or if the oldest history point line to target intersects the canvas
+        //
+        let aOldestHistoryXY;
+        if (fTargetHistory.length > 0) {
+            let aOldestHistoryPos = fTargetHistory[0];
+            let aOldestHistoryLatLon = new aLatLon(aOldestHistoryPos.lat, aOldestHistoryPos.lon);
+            aOldestHistoryXY = fSelf.lonLatToPixel(aOldestHistoryLatLon.lon, aOldestHistoryLatLon.lat);
+        }
+        let aIsTargetVisible = aTargetXY[0] >= 0 && aTargetXY[1] >= 0
+          && aTargetXY[0] <= fCtx.canvas.width && aTargetXY[1] <= fCtx.canvas.height;
+        let aIsLastHistoryLineVisible = aOldestHistoryXY
+          && lineIntersectsCanvas(aOldestHistoryXY, aTargetXY, fCtx.canvas.width, fCtx.canvas.height);
+        if (aIsTargetVisible || aIsLastHistoryLineVisible) {
+
+            fCtx.lineWidth = fSelf.HistoryLineWidth;
             fCtx.strokeStyle = fSelf.HistoryColor;
             fCtx.beginPath();
             let aFirst = true;
@@ -328,7 +401,7 @@ export default async (fApi) => {
                 let aP = new aLatLon(aPos.lat, aPos.lon);   
                 var aTargetHistoryXY = fSelf.lonLatToPixel(aP.lon, aP.lat);
                 fCtx.beginPath();
-                fCtx.arc(aTargetHistoryXY[0], aTargetHistoryXY[1], 2, 0, 2 * Math.PI);
+                fCtx.arc(aTargetHistoryXY[0], aTargetHistoryXY[1], fSelf.HistoryLineWidth, 0, 2 * Math.PI);
                 fCtx.fillStyle = fSelf.HistoryColor;
                 fCtx.fill();
                 fCtx.stroke();
@@ -340,6 +413,9 @@ export default async (fApi) => {
             return; // quit if no data
         }
 
+        //
+        // draw CPA for warning targets
+        //
         if (fIsWarning) {
             let aP2 = aP1.destinationPoint(fTargetSpeed * fTcpa, fTargetCourse);
             var aTargetCPAXY = fSelf.lonLatToPixel(aP2.lon, aP2.lat);
@@ -427,12 +503,20 @@ export default async (fApi) => {
     }, 'navpage');
     console.log("aiscpa plugin.mjs registerUserButton(AisCpaWidget, AisCpaParameter) done");
 
-    console.log("aiscpa plugin.mjs loaded")
+    console.log("aiscpa plugin.mjs loaded at", new Date().toISOString());
     console.log("name", fApi.getPluginName());
     console.log("baseUrl", fApi.getBaseUrl());
     const cfg = await fApi.getConfig();
     console.log("plugin config", cfg);
+
+    function logPluginInfo() {
+        console.log("aiscpa ", new Date().toISOString() + ": num positions: " + mTargetHistory.numPositions());
+    }
+
+    const timer = window.setInterval(() => logPluginInfo(), 1000 * 30);
+
     return () => {
-        console.log("cleanup called for aiscpa plugin.mjs");
+        console.log("aiscpa plugin.mjs cleanup called");
+        if (timer) window.clearInterval(timer);
     }
 };
