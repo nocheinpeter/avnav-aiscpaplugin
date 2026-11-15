@@ -239,70 +239,79 @@ export default async (fApi) => {
             logInfo("AisCpaWidget::finalizeFunction()");
         },
         renderCanvas: function (fCanvas, fProps) {
-            //console.log("AisCpaWidget::renderCanvas() props = ", props);
-            if (!fProps.aisLayerVisible || fProps.currentZoom < this.CPAMinZoom) {
-                return;
-            }
-
-            let aIsVisible = fApi.getStoreData(STOREKEYAISCPA);
-            if (!aIsVisible) {
-                //console.log("AisCpaWidget::renderCanvas() not visible");
-                return;
-            }
-
-            var aSpeed = fProps.speed;
-            if (!aSpeed) {
-                aSpeed = 0.0;
-            }
-            var aCourse = fProps.course;
-            if (!aCourse) {
-                aCourse = 0.0;
-            }
-
-            var aCtx = fCanvas.getContext('2d');
-            aCtx.save();
-
-            //console.log("AisCpaWidget::renderCanvas() aisUpdateCount = ", fProps.aisUpdateCount);
-
-            for (const aAisidx in fProps.aisList) {
-                const aAis = fProps.aisList[aAisidx];
-                try {
-
-                    //console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + aAis.mmsi + ", name " + aAis.received.shipname + ", to_bow " + aAis.received.to_bow);
-                    //console.log("AisCpaWidget::renderCanvas() ais = ", aAis);
-
-                    var aTargetSpeed = aAis.received.speed || 0.0;
-                    var aTargetCourse = aAis.received.course || 0.0;
-                    var aTcpa = aAis.cpadata.tcpa || 0.0;
-
-                    var aTargetData = aAis.received;
-                    if (typeof aAis.estimated !== 'undefined' && aAis.estimated !== null 
-                        && typeof aAis.estimated.lat !== 'undefined' && typeof aAis.estimated.lon !== 'undefined'   ) {
-                        aTargetData = aAis.estimated;
-                    }
-
-                    if (typeof aTargetData === 'undefined' || aTargetData === null || typeof aTargetData.lat === 'undefined'
-                      || typeof aTargetData.lon === 'undefined' || aTargetData.lat === null || aTargetData.lon === null) {
-                        continue;
-                    }
-
-                    if (!(mTargetHistory instanceof TargetHistory)) {
-                        mTargetHistory = new TargetHistory();
-                        console.log("AisCpaWidget::saveHistory() creating targetHistory");
-                    }
-                    const aHistory = mTargetHistory.saveHistory(aAis.mmsi, aAis.received, this.HistoryTime);
-
-                    drawCPA(this, aCtx, aAis.warning, fProps.position, aSpeed, aCourse, aTargetData, aTargetSpeed, aTargetCourse,
-                        aTcpa, aAis.received.length, aAis.received.beam, aAis.received.to_bow, aAis.received.to_port, aAis.received.heading,
-                        aHistory.pos);
+            const aRenderStart = Date.now();
+            try {
+                //console.log("AisCpaWidget::renderCanvas() props = ", props);
+                if (!fProps.aisLayerVisible || fProps.currentZoom < this.CPAMinZoom) {
+                    return;
                 }
-                catch (aE) {
-                    console.log("AisCpaWidget::renderCanvas() error while processing AIS data for mmsi " + aAis.mmsi, aE);
+
+                let aIsVisible = fApi.getStoreData(STOREKEYAISCPA);
+                if (!aIsVisible) {
+                    //console.log("AisCpaWidget::renderCanvas() not visible");
+                    return;
+                }
+
+                var aSpeed = fProps.speed;
+                if (!aSpeed) {
+                    aSpeed = 0.0;
+                }
+                var aCourse = fProps.course;
+                if (!aCourse) {
+                    aCourse = 0.0;
+                }
+
+                var aCtx = fCanvas.getContext('2d');
+                aCtx.save();
+
+                //console.log("AisCpaWidget::renderCanvas() aisUpdateCount = ", fProps.aisUpdateCount);
+
+                for (const aAisidx in fProps.aisList) {
+                    const aAis = fProps.aisList[aAisidx];
+                    try {
+
+                        //console.log("AisCpaWidget::renderCanvas() ais warning for MMSI " + aAis.mmsi + ", name " + aAis.received.shipname + ", to_bow " + aAis.received.to_bow);
+                        //console.log("AisCpaWidget::renderCanvas() ais = ", aAis);
+
+                        var aTargetSpeed = aAis.received.speed || 0.0;
+                        var aTargetCourse = aAis.received.course || 0.0;
+                        var aTcpa = aAis.cpadata.tcpa || 0.0;
+
+                        var aTargetData = aAis.received;
+                        if (typeof aAis.estimated !== 'undefined' && aAis.estimated !== null 
+                            && typeof aAis.estimated.lat !== 'undefined' && typeof aAis.estimated.lon !== 'undefined'   ) {
+                            aTargetData = aAis.estimated;
+                        }
+
+                        if (typeof aTargetData === 'undefined' || aTargetData === null || typeof aTargetData.lat === 'undefined'
+                          || typeof aTargetData.lon === 'undefined' || aTargetData.lat === null || aTargetData.lon === null) {
+                            continue;
+                        }
+
+                        if (!(mTargetHistory instanceof TargetHistory)) {
+                            mTargetHistory = new TargetHistory();
+                            console.log("AisCpaWidget::saveHistory() creating targetHistory");
+                        }
+                        const aHistory = mTargetHistory.saveHistory(aAis.mmsi, aAis.received, this.HistoryTime);
+
+                        drawCPA(this, aCtx, aAis.warning, fProps.position, aSpeed, aCourse, aTargetData, aTargetSpeed, aTargetCourse,
+                            aTcpa, aAis.received.length, aAis.received.beam, aAis.received.to_bow, aAis.received.to_port, aAis.received.heading,
+                            aHistory.pos);
+                    }
+                    catch (aE) {
+                        console.log("AisCpaWidget::renderCanvas() error while processing AIS data for mmsi " + aAis.mmsi, aE);
+                    }
+                }
+
+                aCtx.restore();
+                //console.log("AisCpaWidget::renderCanvas() fini");
+            }
+            finally {
+                const aRenderDuration = Date.now() - aRenderStart;
+                if (aRenderDuration > 20) {
+                    logInfo("AisCpaWidget::renderCanvas() render time = " + aRenderDuration + "ms");
                 }
             }
-
-            aCtx.restore();
-            //console.log("AisCpaWidget::renderCanvas() fini");
         }
     }
 
