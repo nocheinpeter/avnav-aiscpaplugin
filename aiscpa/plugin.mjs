@@ -21,22 +21,14 @@
  #
  */
 
+import TargetHistory from './targethistory.mjs';
+import { logDebug, logInfo } from './log.mjs';
+import { drawCPA, lineIntersectsCanvas } from './tools.mjs';
+
 export default async (fApi) => {
 
-    const mLogDebug = true; // set to false to disable debug logging
-    const mModuleName = "aiscpa";
     const STOREKEYAISCPA = fApi.getStoreBaseKey() + ".AisCpa";
     fApi.setStoreData(STOREKEYAISCPA, true); // CPAs ares visible by default
-
-    function logDebug(fMsg) {
-        if (mLogDebug) {
-            console.log(mModuleName + " " + new Date().toLocaleString() + " " + fMsg);
-        }
-    }
-
-    function logInfo(fMsg) {
-        console.log(mModuleName + " " + new Date().toLocaleString() +" " + fMsg);
-    }
 
     // AVNAV: draws AIS CPA line on map display widget
     var AisCpaParameter = {
@@ -98,98 +90,7 @@ export default async (fApi) => {
     };
 
 
-    // saves targets track history
-    class TargetHistory {
-        constructor() {
-            this.historyByMmsi = new Map();
-            this.positionCount = 0;
-        }
-
-        saveHistory(fMmsi, fPosition, fMaxHistoryTime) {
-
-            if (fMaxHistoryTime <= 0) {
-                this.clear();
-                return { counter: 0, pos: [] };
-            }
-
-            const aNow = Date.now();
-            const aOldestTime = aNow - fMaxHistoryTime * 60 * 1000;
-            let aHistory = this.historyByMmsi.get(fMmsi);
-            if (!aHistory) {
-                aHistory = { counter: 0, pos: [] };
-                this.historyByMmsi.set(fMmsi, aHistory);
-            }
-
-            this.removeExpiredPositions(fMmsi, aHistory, aOldestTime);
-            
-            if (typeof fPosition === 'undefined' || fPosition === null || typeof fPosition.lat === 'undefined' || typeof fPosition.lon === 'undefined') {
-                return aHistory;
-            }
-
-            let aLastPos = aHistory.pos[aHistory.pos.length - 1];
-            if (!aLastPos || aLastPos.lat !== fPosition.lat || aLastPos.lon !== fPosition.lon) {
-                aHistory.pos.push({ lat: fPosition.lat, lon: fPosition.lon, timestamp: aNow });
-                aHistory.counter += 1;
-                this.positionCount += 1;
-            }
-            else {
-                if (aLastPos) {
-                    aLastPos.timestamp = aNow;
-                }
-            }
-            return aHistory;
-        }
-
-        // clears all target histories
-        clear() {
-            console.log("TargetHistory::clear()");
-            this.historyByMmsi.clear();
-            this.positionCount = 0;
-        }
-
-        size() {
-            return this.historyByMmsi.size;
-        }
-
-        numPositions() {
-            return this.positionCount;
-        }
-
-        // removes all target histories older than fMaxAgeSeconds
-        removeOldTargets(fMaxAgeSeconds) {
-            if (fMaxAgeSeconds <= 0) {
-                this.clear();
-                return;
-            }
-
-            const aOldestTime = Date.now() - fMaxAgeSeconds * 1000;
-            for (const [aMmsi, aHistory] of this.historyByMmsi) {
-                const aLastPosition = aHistory.pos[aHistory.pos.length - 1];
-                if (!aLastPosition || !Number.isFinite(aLastPosition.timestamp) || aLastPosition.timestamp < aOldestTime) {
-                    this.positionCount -= aHistory.pos.length;
-                    this.historyByMmsi.delete(aMmsi);
-                    logInfo("TargetHistory::removeOldTargets() deleting history of " + aMmsi 
-                        + ", last time = " + (aLastPosition ? new Date(aLastPosition.timestamp).toLocaleString() : "none")
-                        + ", #positions = " + this.positionCount);
-                }
-            }
-        }
-
-        removeExpiredPositions(fMmsi, fHistory, fOldestTime) {
-            //console.log("TargetHistory::removeExpiredPositions() called for mmsi " + fMmsi);
-            while (fHistory.pos.length > 0
-              && (!Number.isFinite(fHistory.pos[0].timestamp) || fHistory.pos[0].timestamp < fOldestTime)) {
-          
-                logInfo("TargetHistory::removeExpiredPositions() deleting old history for mmsi " + fMmsi
-                        + ", timestamp = " + new Date(fHistory.pos[0].timestamp).toLocaleString());
-          
-                fHistory.pos.shift();
-                this.positionCount -= 1;
-            }
-        }
-    }
-
-    var mTargetHistory = new TargetHistory();
+    var mTargetHistory = new TargetHistory(logInfo);
 
     var AisCpaWidget = {
         // Editable Parameters
@@ -294,7 +195,7 @@ export default async (fApi) => {
                         }
                         const aHistory = mTargetHistory.saveHistory(aAis.mmsi, aAis.received, this.HistoryTime);
 
-                        drawCPA(this, aCtx, aAis.warning, fProps.position, aSpeed, aCourse, aTargetData, aTargetSpeed, aTargetCourse,
+                        drawCPA(fApi, this, aCtx, aAis.warning, fProps.position, aSpeed, aCourse, aTargetData, aTargetSpeed, aTargetCourse,
                             aTcpa, aAis.received.length, aAis.received.beam, aAis.received.to_bow, aAis.received.to_port, aAis.received.heading,
                             aHistory.pos);
                     }
@@ -311,210 +212,6 @@ export default async (fApi) => {
                 if (aRenderDuration > 20) {
                     logInfo("AisCpaWidget::renderCanvas() render time = " + aRenderDuration + "ms");
                 }
-            }
-        }
-    }
-
-    function lineIntersectsCanvas(fStart, fEnd, fWidth, fHeight) {
-        const aX = fEnd[0] - fStart[0];
-        const aY = fEnd[1] - fStart[1];
-        const aP = [-aX, aX, -aY, aY];
-        const aQ = [fStart[0], fWidth - fStart[0], fStart[1], fHeight - fStart[1]];
-        let aMin = 0;
-        let aMax = 1;
-
-        if (![...fStart, ...fEnd, fWidth, fHeight].every(Number.isFinite)) {
-            return false;
-        }
-
-        for (let i = 0; i < aP.length; i++) {
-            if (aP[i] === 0) {
-                if (aQ[i] < 0) {
-                    return false;
-                }
-            }
-            else {
-                const aRatio = aQ[i] / aP[i];
-                if (aP[i] < 0) {
-                    if (aRatio > aMax) {
-                        return false;
-                    }
-                    aMin = Math.max(aMin, aRatio);
-                }
-                else {
-                    if (aRatio < aMin) {
-                        return false;
-                    }
-                    aMax = Math.min(aMax, aRatio);
-                }
-            }
-        }
-        return true;
-    }
-
-    function drawCPA(fSelf, fCtx, fIsWarning, fOwnPos, fOwnSpeed, fOwnCourse, fTargetPos, fTargetSpeed, fTargetCourse, fTcpa, fTargetLength, fTargetWidth,
-        fTargetToBow, fTargetToPort, fTargetHeading, fTargetHistory) {
-        /*         console.log("AisCpaWidget::drawCPA() ownPos = ", ownPos, " ownSpeed = ", ownSpeed, " ownCourse = ", ownCourse);
-                console.log("AisCpaWidget::drawCPA() targetPos = ", targetPos, " targetSpeed = ", targetSpeed, " targetCourse = ", targetCourse);
-                console.log("AisCpaWidget::drawCPA() tcpa = ", tcpa);   
-         */
-        let aLatLon = fApi.LatLon();
-        let aP1 = new aLatLon(fTargetPos.lat, fTargetPos.lon);
-        var aTargetXY = fSelf.lonLatToPixel(aP1.lon, aP1.lat);
-
-        // Rec. ITU-R M.1371-4 3.3.3 Reference point for reported position and overall dimensions of ship
-        let aIsAntennaPosValid = (typeof fTargetToPort !== 'undefined') && (typeof fTargetToBow !== 'undefined')
-          && (typeof fTargetLength !== 'undefined') && (typeof fTargetWidth !== 'undefined');
-        aIsAntennaPosValid = aIsAntennaPosValid && (fTargetToPort !== null) && (fTargetToBow !== null) && (fTargetLength !== null) && (fTargetWidth !== null);
-        aIsAntennaPosValid = aIsAntennaPosValid && ((fTargetToPort > 0) || (fTargetToBow > 0));
-
-        //
-        // draw real target size
-        //
-        if (fSelf.CPADrawRealSize && aIsAntennaPosValid
-          && aTargetXY[0] >= 0 && aTargetXY[1] >= 0 && aTargetXY[0] <= fCtx.canvas.width && aTargetXY[1] <= fCtx.canvas.height) {
-            if (typeof fTargetHeading === 'undefined' || fTargetHeading === null) {
-                fTargetHeading = fTargetCourse;
-            }
-            // target shape with smaller bow
-            let aToPort = fTargetToPort;
-            let aToStern = fTargetLength - fTargetToBow;
-
-            let aStern = aP1.destinationPoint(aToStern, fTargetHeading + 180.0);
-            let aSternPort = aStern.destinationPoint(aToPort, fTargetHeading - 90.0);
-            let aSternMiddle = aSternPort.destinationPoint(fTargetWidth / 2.0, fTargetHeading + 90.0);
-            let aPort = aSternPort.destinationPoint(0.9 * fTargetLength, fTargetHeading);
-            let aBowMiddle = aSternMiddle.destinationPoint(fTargetLength, fTargetHeading);
-            let aStarboard = aPort.destinationPoint(fTargetWidth, fTargetHeading + 90.0);
-            let aSternStarboard = aSternPort.destinationPoint(fTargetWidth, fTargetHeading + 90.0);
-
-            var aTargetRectXY = [
-                fSelf.lonLatToPixel(aSternPort.lon, aSternPort.lat),
-                fSelf.lonLatToPixel(aPort.lon, aPort.lat),
-                fSelf.lonLatToPixel(aBowMiddle.lon, aBowMiddle.lat),
-                fSelf.lonLatToPixel(aStarboard.lon, aStarboard.lat),
-                fSelf.lonLatToPixel(aSternStarboard.lon, aSternStarboard.lat)
-            ];
-            fCtx.globalAlpha = 1.0; // fixes transparency
-            fCtx.beginPath();
-            fCtx.strokeStyle = '#303030';
-            fCtx.fillStyle = '#ff000020';
-            fCtx.lineWidth = 1;
-            fCtx.moveTo(aTargetRectXY[0][0], aTargetRectXY[0][1]);
-            fCtx.lineTo(aTargetRectXY[1][0], aTargetRectXY[1][1]);
-            fCtx.lineTo(aTargetRectXY[2][0], aTargetRectXY[2][1]);
-            fCtx.lineTo(aTargetRectXY[3][0], aTargetRectXY[3][1]);
-            fCtx.lineTo(aTargetRectXY[4][0], aTargetRectXY[4][1]);
-            fCtx.closePath();
-            fCtx.stroke();
-            fCtx.fill();
-        }
-
-        //
-        // draw target history if target is visible or if the oldest history point line to target intersects the canvas
-        //
-        let aOldestHistoryXY;
-        if (fTargetHistory.length > 0) {
-            let aOldestHistoryPos = fTargetHistory[0];
-            let aOldestHistoryLatLon = new aLatLon(aOldestHistoryPos.lat, aOldestHistoryPos.lon);
-            aOldestHistoryXY = fSelf.lonLatToPixel(aOldestHistoryLatLon.lon, aOldestHistoryLatLon.lat);
-        }
-        let aIsTargetVisible = aTargetXY[0] >= 0 && aTargetXY[1] >= 0
-          && aTargetXY[0] <= fCtx.canvas.width && aTargetXY[1] <= fCtx.canvas.height;
-        let aIsLastHistoryLineVisible = aOldestHistoryXY
-          && lineIntersectsCanvas(aOldestHistoryXY, aTargetXY, fCtx.canvas.width, fCtx.canvas.height);
-        if (aIsTargetVisible || aIsLastHistoryLineVisible) {
-
-            fCtx.lineWidth = fSelf.HistoryLineWidth;
-            fCtx.strokeStyle = fSelf.HistoryColor;
-            fCtx.beginPath();
-            let aFirst = true;
-            for (const aPos of fTargetHistory) {
-                let aP = new aLatLon(aPos.lat, aPos.lon);
-                var aTargetHistoryXY = fSelf.lonLatToPixel(aP.lon, aP.lat);
-                if (aFirst) {
-                    fCtx.moveTo(aTargetHistoryXY[0], aTargetHistoryXY[1]);
-                    aFirst = false;
-                } else {
-                    fCtx.lineTo(aTargetHistoryXY[0], aTargetHistoryXY[1]);
-                }   
-            }
-            fCtx.stroke();
-            fCtx.lineWidth = 1;
-            for (let i = 0; i < fTargetHistory.length - 1; i++) {
-                let aPos = fTargetHistory[i];
-                let aP = new aLatLon(aPos.lat, aPos.lon);   
-                var aTargetHistoryXY = fSelf.lonLatToPixel(aP.lon, aP.lat);
-                fCtx.beginPath();
-                fCtx.arc(aTargetHistoryXY[0], aTargetHistoryXY[1], fSelf.HistoryLineWidth, 0, 2 * Math.PI);
-                fCtx.fillStyle = fSelf.HistoryColor;
-                fCtx.fill();
-                fCtx.stroke();
-            }
-        }
-
-        if (typeof fOwnPos === 'undefined' || fOwnPos === null || typeof fOwnPos.lat === 'undefined'
-          || typeof fOwnPos.lon === 'undefined') {
-            return; // quit if no data
-        }
-
-        //
-        // draw CPA for warning targets
-        //
-        if (fIsWarning) {
-            let aP2 = aP1.destinationPoint(fTargetSpeed * fTcpa, fTargetCourse);
-            var aTargetCPAXY = fSelf.lonLatToPixel(aP2.lon, aP2.lat);
-            let aP3 = new aLatLon(fOwnPos.lat, fOwnPos.lon);
-            let aP4 = aP3.destinationPoint(fOwnSpeed * fTcpa, fOwnCourse);
-            var aOwnXY = fSelf.lonLatToPixel(aP3.lon, aP3.lat);
-            var aOwnCPAXY = fSelf.lonLatToPixel(aP4.lon, aP4.lat);
-
-            fCtx.globalAlpha = fSelf.CPAOpacity;
-            // draw CPA connection
-            fCtx.beginPath();
-            fCtx.strokeStyle = fSelf.CPAFillColor;
-            fCtx.lineWidth = fSelf.CPALineWidth;
-            fCtx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
-            fCtx.lineTo(aTargetCPAXY[0], aTargetCPAXY[1]);
-            fCtx.stroke();
-
-            fCtx.beginPath();
-            fCtx.strokeStyle = fSelf.CPALineColor;
-            fCtx.setLineDash([10, 6]);
-            fCtx.lineWidth = fSelf.CPALineWidth;
-            fCtx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
-            fCtx.lineTo(aTargetCPAXY[0], aTargetCPAXY[1]);
-            fCtx.stroke();
-
-            // draw lines from current positions to positions at TCPA
-            fCtx.beginPath();
-            fCtx.strokeStyle = fSelf.CPACourseColor;
-            //ctx.setLineDash([1, 1]);
-            fCtx.lineWidth = 1;
-            fCtx.moveTo(aOwnCPAXY[0], aOwnCPAXY[1]);
-            fCtx.lineTo(aOwnXY[0], aOwnXY[1]);
-            fCtx.stroke();
-
-            fCtx.beginPath();
-            fCtx.moveTo(aTargetCPAXY[0], aTargetCPAXY[1]);
-            fCtx.lineTo(aTargetXY[0], aTargetXY[1]);
-            fCtx.stroke();
-
-            // draw circles for positions at TCPA
-            fCtx.lineWidth = fSelf.CPAStrokeWidthCircle;
-            fCtx.strokeStyle = fSelf.CPAStrokeColorCircle;
-            fCtx.setLineDash([]);
-            fCtx.fillStyle = fSelf.CPAFillColor;
-            fCtx.beginPath();
-            fCtx.arc(aOwnCPAXY[0], aOwnCPAXY[1], fSelf.CPACircleRadius, 0, 2 * Math.PI);
-            fCtx.fill();
-            fCtx.stroke();
-
-            if (fTargetSpeed > 0.0) {
-                fCtx.beginPath();
-                fCtx.arc(aTargetCPAXY[0], aTargetCPAXY[1], fSelf.CPACircleRadius, 0, 2 * Math.PI);
-                fCtx.fill();
-                fCtx.stroke();
             }
         }
     }
