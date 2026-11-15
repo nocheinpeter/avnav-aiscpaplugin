@@ -23,8 +23,20 @@
 
 export default async (fApi) => {
 
+    const mLogDebug = true; // set to false to disable debug logging
+    const mModuleName = "aiscpa";
     const STOREKEYAISCPA = fApi.getStoreBaseKey() + ".AisCpa";
     fApi.setStoreData(STOREKEYAISCPA, true); // CPAs ares visible by default
+
+    function logDebug(fMsg) {
+        if (mLogDebug) {
+            console.log(mModuleName + " " + new Date().toLocaleString() + " " + fMsg);
+        }
+    }
+
+    function logInfo(fMsg) {
+        console.log(mModuleName + " " + new Date().toLocaleString() +" " + fMsg);
+    }
 
     // AVNAV: draws AIS CPA line on map display widget
     var AisCpaParameter = {
@@ -121,7 +133,9 @@ export default async (fApi) => {
                 this.positionCount += 1;
             }
             else {
-                aLastPos.timestamp = aNow;
+                if (aLastPos) {
+                    aLastPos.timestamp = aNow;
+                }
             }
             return aHistory;
         }
@@ -141,12 +155,34 @@ export default async (fApi) => {
             return this.positionCount;
         }
 
+        // removes all target histories older than fMaxAgeSeconds
+        removeOldTargets(fMaxAgeSeconds) {
+            if (fMaxAgeSeconds <= 0) {
+                this.clear();
+                return;
+            }
+
+            const aOldestTime = Date.now() - fMaxAgeSeconds * 1000;
+            for (const [aMmsi, aHistory] of this.historyByMmsi) {
+                const aLastPosition = aHistory.pos[aHistory.pos.length - 1];
+                if (!aLastPosition || !Number.isFinite(aLastPosition.timestamp) || aLastPosition.timestamp < aOldestTime) {
+                    this.positionCount -= aHistory.pos.length;
+                    this.historyByMmsi.delete(aMmsi);
+                    logInfo("TargetHistory::removeOldTargets() deleting history of " + aMmsi 
+                        + ", last time = " + (aLastPosition ? new Date(aLastPosition.timestamp).toLocaleString() : "none")
+                        + ", #positions = " + this.positionCount);
+                }
+            }
+        }
+
         removeExpiredPositions(fMmsi, fHistory, fOldestTime) {
             //console.log("TargetHistory::removeExpiredPositions() called for mmsi " + fMmsi);
             while (fHistory.pos.length > 0
-                && (!Number.isFinite(fHistory.pos[0].timestamp) || fHistory.pos[0].timestamp < fOldestTime)) {
-                console.log("TargetHistory::removeExpiredPositions() deleting old history for mmsi " + fMmsi
-                    + ", timestamp = " + fHistory.pos[0].timestamp);
+              && (!Number.isFinite(fHistory.pos[0].timestamp) || fHistory.pos[0].timestamp < fOldestTime)) {
+          
+                logInfo("TargetHistory::removeExpiredPositions() deleting old history for mmsi " + fMmsi
+                        + ", timestamp = " + new Date(fHistory.pos[0].timestamp).toLocaleString());
+          
                 fHistory.pos.shift();
                 this.positionCount -= 1;
             }
@@ -184,7 +220,7 @@ export default async (fApi) => {
             aisLayerVisible: 'properties.layers.ais'
         },
         initFunction: function (fCanvas, fProps) {
-            console.log("AisCpaWidget::initFunction() fProps = ", fProps + " history size = " + mTargetHistory.size());
+            logInfo("AisCpaWidget::initFunction() fProps = " + fProps + " history size = " + mTargetHistory.size());
             this.CPAOpacity = fProps.Opacity;
             this.CPAStrokeWidthCircle = fProps.StrokeWidthCircle;
             this.CPAFillColor = fProps.FillColor;
@@ -200,7 +236,7 @@ export default async (fApi) => {
             this.HistoryLineWidth = fProps.HistoryLineWidth;
         },
         finalizeFunction: function (fCanvas) {
-            console.log("AisCpaWidget::finalizeFunction()");
+            logInfo("AisCpaWidget::finalizeFunction()");
         },
         renderCanvas: function (fCanvas, fProps) {
             //console.log("AisCpaWidget::renderCanvas() props = ", props);
@@ -474,10 +510,10 @@ export default async (fApi) => {
         }
     }
 
-    console.log("aiscpa plugin.mjs check version");
-    console.log("AvNav version: ", fApi.getAvNavVersion());
+    logInfo("aiscpa plugin.mjs check version");
+    logInfo("AvNav version: ", fApi.getAvNavVersion());
     if (fApi.getAvNavVersion() < 20261019) {
-        console.log("AIS CPA plugin requires AVNav version 20261019 or higher, please update your AVNav installation");
+        logInfo("AIS CPA plugin requires AVNav version 20261019 or higher, please update your AVNav installation");
         fApi.showToast("AIS CPA plugin requires AVNav version 20261019 or higher, please update your AVNav installation");
         return;
     }
@@ -501,22 +537,28 @@ export default async (fApi) => {
             //console.log("AisCpaWidget::onClick() toggle = ", toggle);
         }
     }, 'navpage');
-    console.log("aiscpa plugin.mjs registerUserButton(AisCpaWidget, AisCpaParameter) done");
+    logInfo("plugin.mjs registerUserButton(AisCpaWidget, AisCpaParameter) done");
 
-    console.log("aiscpa plugin.mjs loaded at", new Date().toISOString());
-    console.log("name", fApi.getPluginName());
-    console.log("baseUrl", fApi.getBaseUrl());
-    const cfg = await fApi.getConfig();
-    console.log("plugin config", cfg);
+    logInfo("plugin.mjs loaded");
+    logInfo("name", fApi.getPluginName());
+    logInfo("baseUrl", fApi.getBaseUrl());
+    const aCfg = await fApi.getConfig();
+    logInfo("plugin config", aCfg);
 
     function logPluginInfo() {
-        console.log("aiscpa ", new Date().toISOString() + ": num positions: " + mTargetHistory.numPositions());
+        logDebug("num positions: " + mTargetHistory.numPositions()
+            + ", num AIS targets: " + mTargetHistory.size());
     }
 
-    const timer = window.setInterval(() => logPluginInfo(), 1000 * 30);
+    const logTimer = window.setInterval(() => logPluginInfo(), 1000 * 30);
+    const cleanupTimer = window.setInterval(
+        () => mTargetHistory.removeOldTargets(AisCpaWidget.HistoryTime * 60),
+        1000 * 60
+    );
 
     return () => {
-        console.log("aiscpa plugin.mjs cleanup called");
-        if (timer) window.clearInterval(timer);
+        logInfo("plugin.mjs cleanup called");
+        if (logTimer) window.clearInterval(logTimer);
+        if (cleanupTimer) window.clearInterval(cleanupTimer);
     }
 };
