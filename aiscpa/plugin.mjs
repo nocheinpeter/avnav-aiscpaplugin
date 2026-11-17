@@ -91,6 +91,7 @@ export default async (fApi) => {
 
 
     var mTargetHistory = new TargetHistory(logInfo);
+    let mLastUpdateCount = 0;
 
     var AisCpaWidget = {
         // Editable Parameters
@@ -166,6 +167,12 @@ export default async (fApi) => {
                 aCtx.save();
 
                 //console.log("AisCpaWidget::renderCanvas() aisUpdateCount = ", fProps.aisUpdateCount);
+                if (fProps.aisUpdateCount !== mLastUpdateCount) {
+                    if ((fProps.aisUpdateCount - mLastUpdateCount) > 1) {
+                        logInfo("renderCanvas(): AIS update count jumped from " + mLastUpdateCount + " to " + fProps.aisUpdateCount);
+                    }
+                    mLastUpdateCount = fProps.aisUpdateCount;
+                }
 
                 for (const aAisidx in fProps.aisList) {
                     const aAis = fProps.aisList[aAisidx];
@@ -193,6 +200,7 @@ export default async (fApi) => {
                             mTargetHistory = new TargetHistory();
                             console.log("AisCpaWidget::saveHistory() creating targetHistory");
                         }
+                        // todo move saveHistory() to timer outside rendering
                         const aHistory = mTargetHistory.saveHistory(aAis.mmsi, aAis.received, this.HistoryTime);
 
                         drawCPA(fApi, this, aCtx, aAis.warning, fProps.position, aSpeed, aCourse, aTargetData, aTargetSpeed, aTargetCourse,
@@ -216,8 +224,8 @@ export default async (fApi) => {
         }
     }
 
-    logInfo("aiscpa plugin.mjs check version");
-    logInfo("AvNav version: ", fApi.getAvNavVersion());
+    logInfo("plugin.mjs check version");
+    logInfo("plugin.mjs AvNav version: " + fApi.getAvNavVersion());
     if (fApi.getAvNavVersion() < 20261019) {
         logInfo("AIS CPA plugin requires AVNav version 20261019 or higher, please update your AVNav installation");
         fApi.showToast("AIS CPA plugin requires AVNav version 20261019 or higher, please update your AVNav installation");
@@ -225,7 +233,7 @@ export default async (fApi) => {
     }
 
     fApi.registerWidget(AisCpaWidget, AisCpaParameter);
-    console.log("aiscpa plugin.mjs registerWidget(AisCpaWidget, AisCpaParameter) done");
+    logInfo("plugin.mjs registerWidget(AisCpaWidget, AisCpaParameter) done");
 
     fApi.registerUserButton({
         name: 'AisCpaButton',
@@ -243,20 +251,31 @@ export default async (fApi) => {
             //console.log("AisCpaWidget::onClick() toggle = ", toggle);
         }
     }, 'navpage');
-    logInfo("plugin.mjs registerUserButton(AisCpaWidget, AisCpaParameter) done");
 
+    logInfo("plugin.mjs registerUserButton(AisCpaWidget, AisCpaParameter) done");
     logInfo("plugin.mjs loaded");
-    logInfo("name", fApi.getPluginName());
-    logInfo("baseUrl", fApi.getBaseUrl());
-    const aCfg = await fApi.getConfig();
-    logInfo("plugin config", aCfg);
+    logInfo("plugin.mjs name: " + fApi.getPluginName());
+    logInfo("plugin.mjs baseUrl: " + fApi.getBaseUrl());
+/*     const aCfg = await fApi.getConfig();
+    logInfo("plugin.mjs config: " + JSON.stringify(aCfg)); */
+    fApi.getConfig()
+        .then((fCfg) => logInfo("plugin.mjs config: " + JSON.stringify(fCfg)))   
+        .catch((fError) => console.error("Could not read plugin config", fError));
+
 
     function logPluginInfo() {
-        logDebug("num positions: " + mTargetHistory.numPositions()
-            + ", num AIS targets: " + mTargetHistory.size());
+        let aC = fApi.getStoreData("nav.ais.updateCount");
+        if (aC !== mLastUpdateCount) {
+            if ((aC - mLastUpdateCount) > 1) {
+                logInfo("logPluginInfo(): AIS update count jumped from " + mLastUpdateCount + " to " + aC);
+            }
+            mLastUpdateCount = aC;
+//            logDebug("num positions: " + mTargetHistory.numPositions()
+//              + ", num AIS targets: " + mTargetHistory.size() + ", AIS update count: " + aC);
+        }   
     }
 
-    const logTimer = window.setInterval(() => logPluginInfo(), 1000 * 30);
+    const logTimer = window.setInterval(() => logPluginInfo(), 250);
     const cleanupTimer = window.setInterval(
         () => mTargetHistory.removeOldTargets(AisCpaWidget.HistoryTime * 60),
         1000 * 60

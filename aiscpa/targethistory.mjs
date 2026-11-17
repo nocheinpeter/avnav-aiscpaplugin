@@ -26,6 +26,7 @@
         this.log = fLog;
         this.historyByMmsi = new Map();
         this.positionCount = 0;
+        this.log("TargetHistory::constructor()");
     }
 
     saveHistory(fMmsi, fPosition, fMaxHistoryTime) {
@@ -80,28 +81,41 @@
             return;
         }
 
+        let aNumOldPositions = 0;
+        let aNumOldTargets = 0;
         const aOldestTime = Date.now() - fMaxAgeSeconds * 1000;
         for (const [aMmsi, aHistory] of this.historyByMmsi) {
             const aLastPosition = aHistory.pos[aHistory.pos.length - 1];
             if (!aLastPosition || !Number.isFinite(aLastPosition.timestamp) || aLastPosition.timestamp < aOldestTime) {
                 this.positionCount -= aHistory.pos.length;
                 this.historyByMmsi.delete(aMmsi);
-                this.log("TargetHistory::removeOldTargets() deleting history of " + aMmsi
-                    + ", last time = " + (aLastPosition ? new Date(aLastPosition.timestamp).toLocaleString() : "none")
-                    + ", #positions = " + this.positionCount);
+//                this.log("TargetHistory::removeOldTargets() deleting history of " + aMmsi
+//                    + ", last time = " + (aLastPosition ? new Date(aLastPosition.timestamp).toLocaleString() : "none")
+//                    + ", #points =" + aHistory.pos.length
+//                    + ", #positions = " + this.positionCount);
+                aNumOldTargets += 1;
+                aNumOldPositions += aHistory.pos.length;
             }
+        }
+        if (aNumOldTargets > 0) {
+            this.log("TargetHistory::removeOldTargets() deleted history of #mmsi " + aNumOldTargets
+                + ", and deleted #points =" + aNumOldPositions);
         }
     }
 
     removeExpiredPositions(fMmsi, fHistory, fOldestTime) {
+        let aCounter = 0;
         while (fHistory.pos.length > 0
-            && (!Number.isFinite(fHistory.pos[0].timestamp) || fHistory.pos[0].timestamp < fOldestTime)) {
-
-            this.log("TargetHistory::removeExpiredPositions() deleting old history for mmsi " + fMmsi
-                + ", timestamp = " + new Date(fHistory.pos[0].timestamp).toLocaleString());
-
+          && (!Number.isFinite(fHistory.pos[0].timestamp) || fHistory.pos[0].timestamp < fOldestTime)) 
+        {
             fHistory.pos.shift();
             this.positionCount -= 1;
+            aCounter += 1;
         }
+        
+//        if (aCounter > 0) {
+//            this.log("TargetHistory::removeExpiredPositions() deleted " + aCounter + " old positions for mmsi " + fMmsi
+//                + ", #positions = " + this.positionCount);
+//        }
     }
 }
